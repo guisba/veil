@@ -4,6 +4,14 @@ Conversa P2P cifrada por convite ou QR Code, envelopes protegidos por senha, lei
 
 > **Aviso:** protótipo experimental. Não garante anonimato absoluto, invisibilidade ao provedor de internet, apagamento forense, sigilo futuro de aplicação ou proteção contra análise avançada de tráfego. Não passou por auditoria independente. Não use como única proteção para comunicações de alto risco.
 
+## Download
+
+Baixe **`veil.html`** na página de [Releases](https://github.com/guisba/veil/releases/latest). É o mesmo arquivo que `index.html` neste repositório (`python3 build.py` o regenera a partir de `src/`), sem dependências e sem rede para as funções locais. Confira a integridade com o `veil.html.sha256` publicado junto:
+
+```sh
+sha256sum -c veil.html.sha256
+```
+
 ## Como executar
 
 1. Abra `index.html` em um navegador com JavaScript, WebCrypto e WebRTC. Em iPhone/Android, a abertura local de HTML pode não oferecer todas as APIs; use um navegador com as permissões necessárias ou sirva o arquivo por HTTPS.
