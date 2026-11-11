@@ -1,0 +1,22 @@
+# Local and temporary files
+.DS_Store
+Thumbs.db
+__pycache__/
+*.py[cod]
+.pytest_cache/
+node_modules/
+.venv/
+venv/
+*.log
+.env
+.env.*
+!.env.example
+*secret*
+*token-cache*
+*.pem
+*.p12
+*.pfx
+*.key
+screenshots-private/
+playwright-report/
+test-results/

@@ -1,0 +1,29 @@
+name: VEIL checks
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  protocol:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Protocol roundtrips
+        run: node tests/protocol.test.cjs
+      - name: Auto-negotiation simulation
+        run: node tests/auto.test.cjs
+      - name: Privacy controls
+        run: node tests/privacy.test.cjs
+      - name: Verify generated HTML matches tracked artifact
+        run: |
+          python3 build.py
+          git diff --exit-code -- index.html
