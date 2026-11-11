@@ -2,7 +2,7 @@
 const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
 const { webcrypto }=require('node:crypto');
 const {TextEncoder,TextDecoder}=require('node:util');
-const p=fs.readFileSync(__dirname+'/../p2p.js','utf8');
+const p=fs.readFileSync(__dirname+'/../src/p2p.js','utf8');
 const segment=p.slice(p.indexOf('  function paddedPayload(payload) {'), p.indexOf('  function stopCover() {'));
 assert(segment.includes('function paddedPayload'));
 function make(checked) {
@@ -26,7 +26,7 @@ for (const len of [1,70,150,290,650,1500,3700,7000]) {
 const original=make(false)({t:'message',text:'abc'});
 assert.equal(Buffer.from(original).toString('utf8'),'{"t":"message","text":"abc"}');
 console.log('PASS disable padding retains original byte encoding');
-const qr=fs.readFileSync(__dirname+'/../qr_vendor.js','utf8');
+const qr=fs.readFileSync(__dirname+'/../src/qr_vendor.js','utf8');
 const qcontext={};vm.createContext(qcontext);
 vm.runInContext(qr+'; globalThis.Qr=VeilQrGenerator;',qcontext);
 const Q=qcontext.Qr;

@@ -1,4 +1,6 @@
-/* VEIL P2P — offline UI, opt-in encrypted WSS rendezvous, direct WebRTC or optional TURN. */
+/* VEIL P2P — offline UI, opt-in encrypted WSS rendezvous, direct WebRTC or optional TURN.
+   Protocol, framing, key handling and signalling are unchanged from VEIL 2.2. Presentation goes
+   through the optional VeilUI layer, so this file still runs headless under the Node test mocks. */
 (() => {
   'use strict';
   const $ = (id) => document.getElementById(id);
@@ -33,6 +35,107 @@
   const sanitize = (name) => String(name || 'arquivo').replace(/[\\/\x00-\x1f<>:"|?*]/g, '_').slice(0, 120) || 'arquivo';
   const now = () => new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
   const supported = () => Boolean(window.isSecureContext && crypto && crypto.subtle && window.RTCPeerConnection);
+  const UI = typeof VeilUI !== 'undefined' ? VeilUI : null;
+  const view = { phase: 'idle', unread: 0, rendered: new Map(), started: false };
+
+  function icon(name) {
+    if (typeof document.createElementNS !== 'function') return null;
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('class', 'ico'); svg.setAttribute('aria-hidden', 'true');
+    const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+    use.setAttribute('href', '#i-' + name); svg.append(use);
+    return svg;
+  }
+  function make(tag, className, text) {
+    const el = document.createElement(tag);
+    if (className) el.className = className;
+    if (text !== undefined) el.textContent = text;
+    return el;
+  }
+  // Presentation-only connection phase: idle → waiting → negotiating → connected | failed | paused.
+  function setPhase(phase) {
+    view.phase = phase;
+    const grid = $('p2p-grid');
+    if (grid && grid.dataset) grid.dataset.phase = phase;
+    const tag = $('p2p-channel-tag');
+    if (tag && tag.dataset) tag.dataset.state = phase === 'connected' ? 'ready' : phase === 'failed' ? 'failed' : phase === 'idle' || phase === 'paused' ? 'idle' : 'waiting';
+    if (tag && UI) tag.textContent = { idle: 'SEM SALA', waiting: 'AGUARDANDO', negotiating: 'NEGOCIANDO', connected: 'P2P · E2EE ATIVO', failed: 'FALHA', paused: 'DESCONECTADO' }[phase];
+    const draft = $('p2p-draft');
+    if (draft) draft.placeholder = phase === 'connected' ? 'Mensagem' : 'Conecte-se para escrever';
+    if (phase !== 'connected') setTrackFromPhase(phase);
+    if (UI) {
+      const drawn = phase === 'connected' ? 1 : (phase === 'failed' || phase === 'paused') && state.messages.length ? 0.6 : 0;
+      UI.veil.set({ open: drawn, energy: phase === 'waiting' || phase === 'negotiating' ? 1 : 0 });
+    }
+    const banner = $('p2p-banner');
+    if (banner && banner.dataset) {
+      const show = (phase === 'failed' || phase === 'paused') && Boolean(state.room);
+      banner.hidden = !show;
+      banner.dataset.kind = phase;
+      if (show) $('p2p-banner-text').textContent = phase === 'failed' ? 'Conexão interrompida. A sala continua na memória desta aba.' : 'Canal desconectado. A sala continua na memória desta aba.';
+    }
+    syncNet();
+    if (!state.messages.length) renderMessages();
+  }
+  function syncNet() {
+    if (!UI) return;
+    UI.setNet(view.phase === 'connected' ? 'p2p' : view.phase === 'failed' ? 'failed' : auto.socket ? 'broker' : 'idle');
+  }
+  const TRACK = ['broker', 'peer', 'route', 'auth'];
+  function setTrack(step, complete = false) {
+    const list = $('p2p-track');
+    if (!list || !list.children) return;
+    const at = TRACK.indexOf(step);
+    view.track = step;
+    for (const item of list.children) {
+      const i = TRACK.indexOf(item.dataset.step);
+      item.className = i < at || (complete && i <= at) ? 'is-done' : i === at ? 'is-active' : '';
+    }
+  }
+  function setTrackFromPhase(phase) {
+    if (phase === 'idle' || phase === 'paused') setTrack('', false);
+    else if (phase === 'failed') { const list = $('p2p-track'); if (list && list.children) for (const item of list.children) if (item.className === 'is-active') item.className = ''; }
+  }
+  function composeNote(message, kind = '') {
+    const note = $('p2p-compose-note');
+    if (!note) return;
+    note.textContent = message;
+    note.className = 'composer-note' + (kind ? ' is-' + kind : '');
+  }
+  function defaultComposeNote() {
+    const once = $('p2p-once');
+    if (once && once.checked) composeNote('Leitura única: o texto fica na memória desta aba até o contato abrir, uma vez.', 'once');
+    else composeNote('Enter envia, Shift + Enter quebra a linha. Mantenha os dois dispositivos abertos.');
+  }
+  function setPane(pane, animate = true) {
+    const grid = $('p2p-grid');
+    if (!grid || !grid.dataset || grid.dataset.pane === pane) return;
+    grid.dataset.pane = pane;
+    $('p2p-tab-room').setAttribute('aria-selected', String(pane === 'room'));
+    $('p2p-tab-chat').setAttribute('aria-selected', String(pane === 'chat'));
+    if (pane === 'chat') clearUnread();
+    if (animate && grid.classList && grid.classList.add) { grid.classList.remove('pane-enter'); void grid.offsetWidth; grid.classList.add('pane-enter'); }
+    if (UI) UI.veil.visibility();
+    if (pane === 'chat') { const root = $('p2p-messages'); root.scrollTop = root.scrollHeight; }
+  }
+  function chatVisible() {
+    const stage = $('p2p-stage');
+    return !stage || stage.offsetParent === undefined || stage.offsetParent !== null;
+  }
+  const baseTitle = typeof document.title === 'string' ? document.title : '';
+  function clearUnread() {
+    view.unread = 0;
+    if (UI && baseTitle) document.title = baseTitle;
+    const badge = $('p2p-unread');
+    if (badge) badge.hidden = true;
+  }
+  function noteIncoming() {
+    if (chatVisible() && !document.hidden) return;
+    view.unread++;
+    const badge = $('p2p-unread');
+    if (badge) { badge.textContent = String(Math.min(view.unread, 99)); badge.hidden = false; }
+    if (UI && baseTitle) document.title = '(' + Math.min(view.unread, 99) + ') ' + baseTitle; // a count only, never content
+  }
 
   function setStatus(message, status = '') {
     $('p2p-state').textContent = message;
@@ -41,12 +144,19 @@
     $('p2p-grid').classList.toggle('is-connected', connected);
     $('p2p-channel-tag').textContent = connected ? 'P2P · E2EE ATIVO' : status === 'failed' ? 'FALHA' : 'AGUARDANDO';
     for (const id of ['p2p-draft', 'p2p-send', 'p2p-once', 'p2p-file']) $(id).disabled = !connected;
+    if (connected) setPhase('connected');
+    else if (status === 'failed') {
+      if (view.phase === 'connected') { setTrack(''); setAutoStatus('Canal encerrado. Use Reconectar para procurar o contato novamente.'); }
+      setPhase('failed');
+    }
+    else if (view.phase === 'connected' || view.phase === 'failed') setPhase(state.room ? 'paused' : 'idle');
+    else setPhase(view.phase);
   }
   function info(message, error = false) {
     const messageEl = $('p2p-route-note');
     if (messageEl) {
       messageEl.textContent = message;
-      messageEl.style.color = error ? 'var(--red)' : 'var(--muted)';
+      messageEl.className = 'route-note' + (error ? ' is-error' : '');
     }
   }
   function errorText(e) { return e && e.message ? e.message : 'Operação indisponível neste navegador.'; }
@@ -89,7 +199,11 @@
     try { if (pc) pc.close(); } catch {}
     if (clearRoom) {
       scrub();
+      hideSecretQr();
+      clearUnread();
       $('p2p-session-panel').hidden = true;
+      $('p2p-setup').hidden = false;
+      setCodeVeiled(true);
       $('p2p-local-signal').value = '';
       $('p2p-remote-signal').value = '';
       $('p2p-code').textContent = '—';
@@ -97,12 +211,14 @@
       renderMessages();
     }
     setStatus('Sem conexão P2P.', '');
+    setPhase(state.room ? 'paused' : 'idle');
   }
 
   function chooseRole(role) {
     disconnect(true);
     state.role = role;
-    $('p2p-qr-panel').hidden = true;
+    hideSecretQr();
+    setupError('');
     closeQrScanner();
     $('p2p-host').setAttribute('aria-pressed', role === 'host' ? 'true' : 'false');
     $('p2p-guest').setAttribute('aria-pressed', role === 'guest' ? 'true' : 'false');
@@ -162,11 +278,14 @@
     state.token = makeToken(room, secret);
     state.key = await crypto.subtle.importKey('raw', secret, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']);
     $('p2p-session-panel').hidden = false;
+    $('p2p-setup').hidden = true;
     const digest = await crypto.subtle.digest('SHA-256', E.encode('VEIL-SAS1:' + room + ':' + hex(secret)));
     $('p2p-fingerprint').textContent = hex(new Uint8Array(digest).slice(0, 8)).toUpperCase().match(/.{1,4}/g).join(' ');
-    if (state.role === 'host') { $('p2p-code').textContent = state.token; $('p2p-qr-panel').hidden = true; }
+    if (state.role === 'host') { $('p2p-code').textContent = state.token; hideSecretQr(); }
     info('Chave preparada localmente. Só a negociação cifrada será enviada ao broker.');
     setStatus('Convite preparado. Procurando o outro dispositivo...', '');
+    setPhase('waiting');
+    if (UI) { UI.unveil($('p2p-session-panel')); UI.syncAllSegments(); }
     await startAuto();
   }
 
@@ -216,6 +335,7 @@
     channel.bufferedAmountLowThreshold = 64 * 1024;
     channel.onopen = () => {
       setStatus('Canal direto estabelecido. Validando segredo…', '');
+      setTrack('auth');
       sendEncrypted({ t: 'hello', r: state.room, version: 1 }).then(() => {
         state.helloSent = true;
         checkReady();
@@ -224,6 +344,7 @@
     channel.onmessage = (event) => {
       state.receiving = state.receiving.then(() => handlePacket(event.data)).catch((e) => {
         info('Uma mensagem foi recusada: ' + errorText(e), true);
+        if (state.authenticated) composeNote('Uma mensagem recebida foi recusada: ' + errorText(e), 'error');
       });
     };
     channel.onclose = () => {
@@ -239,6 +360,12 @@
     setStatus('Conectado. Chave compartilhada autenticada por AES-GCM.', 'ready');
     info('WebRTC DTLS ativo. Conteúdo cifrado adicionalmente com AES-256-GCM.');
     appendMessage({ id: hex(random(8)), type: 'system', text: 'Canal P2P autenticado. Nenhuma mensagem é armazenada pelo broker de encontro.', when: now() });
+    setTrack('auth', true);
+    hideSecretQr();
+    defaultComposeNote();
+    setPane('chat');
+    // Hand the keyboard to the composer when nothing else holds focus (pointer devices only).
+    if (UI && UI.currentView() === 'p2p' && !matchMedia('(pointer: coarse)').matches && (document.activeElement === document.body || !document.activeElement || document.activeElement.offsetParent === null)) setTimeout(() => $('p2p-draft').focus({ preventScroll: true }), 60);
     stopAuto();
     scheduleCover();
     setAutoStatus('Canal estabelecido. Broker de encontro desconectado.', true);
@@ -395,6 +522,7 @@
   function appendMessage(message) {
     state.messages.push(message);
     if (state.messages.length > 250) state.messages.shift();
+    if (!message.self && message.type !== 'system') noteIncoming();
     renderMessages();
   }
   function findMessage(id) { return state.messages.find((m) => m.id === id); }
@@ -442,7 +570,7 @@
       ticket.completed = true;
       const message = findMessage(p.id);
       if (!message) return;
-      message.type = 'revealed'; message.text = p.text;
+      message.type = 'revealed'; message.text = p.text; message.burnAt = Date.now() + 30000;
       renderMessages();
       const timer = setTimeout(() => hideOnce(p.id), 30000);
       state.burnTimers.set(p.id, timer);
@@ -454,7 +582,7 @@
       if (!/^[a-f0-9]{32}$/.test(p.id) || state.incomingFiles.has(p.id) || typeof p.name !== 'string' || typeof p.mime !== 'string' || !Number.isSafeInteger(p.size) || p.size < 0 || p.size > MAX_FILE_BYTES || !/^[a-f0-9]{64}$/.test(p.digest)) return;
       const count = Math.ceil(p.size / CHUNK_BYTES);
       state.incomingFiles.set(p.id, { name: sanitize(p.name), mime: p.mime.slice(0, 100), size: p.size, digest: p.digest, chunks: new Array(count), received: 0 });
-      appendMessage({ id: p.id, type: 'file-progress', text: 'Recebendo ' + sanitize(p.name) + '…', when: now(), self: false });
+      appendMessage({ id: p.id, type: 'file-progress', text: 'Recebendo ' + sanitize(p.name) + '…', when: now(), self: false, progress: 0 });
     } else if (p.t === 'file-chunk') {
       if (!/^[a-f0-9]{32}$/.test(p.id) || typeof p.b !== 'string' || p.b.length > 12000 || !Number.isInteger(p.seq)) return;
       const incoming = state.incomingFiles.get(p.id);
@@ -463,6 +591,11 @@
       if (part.length > CHUNK_BYTES) return;
       incoming.chunks[p.seq] = part;
       incoming.received += part.length;
+      const receiving = findMessage(p.id);
+      if (receiving) {
+        const progress = incoming.size ? incoming.received / incoming.size : 1;
+        if (progress - (receiving.progress || 0) >= 0.04 || progress >= 1) { receiving.progress = progress; renderMessages(); }
+      }
     } else if (p.t === 'file-end') {
       if (!/^[a-f0-9]{32}$/.test(p.id)) return;
       const incoming = state.incomingFiles.get(p.id);
@@ -501,44 +634,120 @@
     catch (e) { if (message) { message.type = 'burnt'; renderMessages(); } info(errorText(e), true); }
   }
 
+  function emptyState() {
+    const copy = view.phase === 'connected' ? ['Canal pronto', 'Conexão P2P pronta. Envie a primeira mensagem.']
+      : view.phase === 'waiting' || view.phase === 'negotiating' ? (state.role === 'host' ? ['Aguardando o convidado', 'Envie o convite ou mostre o QR Code. A conversa abre quando a chave for confirmada nos dois lados.'] : ['Procurando a sala', 'O convite foi aceito. Aguardando o criador da sala responder.'])
+      : view.phase === 'failed' ? ['Conexão interrompida', 'Abra a Sala para reconectar ou revisar a rede.']
+      : view.phase === 'paused' ? ['Canal desconectado', 'A sala continua na memória. Reconecte quando quiser.']
+      : ['Nenhuma sala aberta', 'Crie uma sala e compartilhe um convite para conectar automaticamente.'];
+    const empty = make('div', 'chat-empty');
+    empty.append(make('b', '', copy[0]), make('span', '', copy[1]));
+    return empty;
+  }
+  const ONCE_TYPES = ['once', 'revealed', 'burnt', 'once-wait', 'once-sent'];
+  function signature(message) {
+    return [message.type, message.text || '', Math.round((message.progress || 0) * 25), message.fileUrl ? 1 : 0].join('|');
+  }
+  function fileRow(text) {
+    const row = make('div', 'file-row');
+    const glyph = icon('file');
+    if (glyph) row.append(glyph);
+    row.append(make('span', '', text));
+    return row;
+  }
+  function progressBar(value) {
+    const bar = make('div', 'progress');
+    const fill = make('i');
+    if (fill.style && fill.style.setProperty) fill.style.setProperty('--v', String(value || 0));
+    bar.append(fill);
+    return bar;
+  }
+  function buildMessage(entry, message, previousType) {
+    const wrap = entry.el;
+    const type = message.type;
+    wrap.className = 'msg' + (message.self ? ' self' : '') + (type === 'system' ? ' system' : '')
+      + (ONCE_TYPES.includes(type) ? ' once ' + (type === 'revealed' ? 'revealed' : type === 'burnt' ? 'burnt' : '') : '')
+      + (type.startsWith('file') ? ' ' + (type === 'file-out' ? 'file-progress' : type === 'file-sent' ? 'file' : type) : '')
+      + (entry.fresh ? ' is-new' : '') + (entry.grouped ? ' grouped' : '');
+    const meta = make('div', 'msg-meta');
+    meta.textContent = (type === 'system' ? 'SISTEMA' : message.self ? 'VOCÊ' : 'OUTRO DISPOSITIVO') + ' · ' + message.when;
+    const bubble = make('div', 'bubble');
+    let text = message.text || '';
+    if (type === 'once') text = 'Mensagem de leitura única. O remetente deve continuar conectado. Após pedir abertura, o conteúdo só poderá ser entregue uma vez.';
+    if (type === 'once-wait') text = 'Pedido de abertura enviado. Aguardando liberação única do remetente…';
+    if (type === 'burnt') text = message.self ? 'Leitura única entregue ao contato. O texto foi apagado desta aba.' : 'Mensagem consumida ou indisponível. Não pode ser reaberta pelo VEIL.';
+    if (type === 'file' || type === 'file-sent') bubble.append(fileRow(text));
+    else if (type === 'file-progress' || type === 'file-out') bubble.append(fileRow(text), progressBar(message.progress));
+    else if (type === 'revealed') {
+      const body = make('span', 'once-text', message.text);
+      const note = make('span', 'bubble-note');
+      const ring = make('span', 'ring ring-sm');
+      if (typeof document.createElementNS === 'function') {
+        const NS = 'http://www.w3.org/2000/svg';
+        const svg = document.createElementNS(NS, 'svg'); svg.setAttribute('viewBox', '0 0 44 44'); svg.setAttribute('aria-hidden', 'true');
+        for (const cls of ['', 'ring-arc']) { const c = document.createElementNS(NS, 'circle'); c.setAttribute('cx', '22'); c.setAttribute('cy', '22'); c.setAttribute('r', '19'); if (cls) { c.setAttribute('class', cls); c.setAttribute('pathLength', '1'); } svg.append(c); }
+        ring.append(svg);
+        const left = Math.max(0, (message.burnAt || 0) - Date.now());
+        ring.style.setProperty('--p', (left / 30000).toFixed(3));
+        const arc = svg.lastChild;
+        requestAnimationFrame(() => requestAnimationFrame(() => { arc.style.transitionDuration = left + 'ms'; ring.style.setProperty('--p', '0'); }));
+        note.append(ring);
+      }
+      note.append(make('span', '', 'Este conteúdo será ocultado em até 30 segundos.'));
+      bubble.append(body, note);
+      if (UI && previousType !== 'revealed') UI.settleText(body, message.text, { toProse: true });
+    } else bubble.textContent = text;
+    if (type === 'once') {
+      const btn = make('button', 'bubble-btn', 'Abrir uma única vez'); btn.type = 'button';
+      btn.onclick = () => requestOnce(message.id); bubble.append(btn);
+    }
+    if (type === 'file' && message.fileUrl) {
+      const btn = make('button', 'bubble-btn', 'Baixar arquivo recebido'); btn.type = 'button';
+      btn.onclick = () => {
+        const a = document.createElement('a'); a.href = message.fileUrl; a.download = message.fileName; a.click();
+      };
+      bubble.append(btn);
+    }
+    wrap.replaceChildren(meta, bubble);
+    if (UI && previousType && previousType !== type && (type === 'revealed' || type === 'burnt' || type === 'file' || type === 'file-error')) UI.unveil(bubble, type === 'burnt' ? 520 : 680);
+  }
+  // Keyed rendering: an element lives as long as its message, so state changes animate in place.
   function renderMessages() {
     const root = $('p2p-messages');
     if (!root) return;
     const nearBottom = root.scrollHeight - root.scrollTop - root.clientHeight < 120;
-    root.replaceChildren();
     if (!state.messages.length) {
-      const empty = document.createElement('div'); empty.className = 'p2p-empty';
-      const symbol = document.createElement('div'); symbol.className = 'p2p-symbol'; symbol.textContent = '◇';
-      empty.append(symbol, document.createTextNode(state.authenticated ? 'Conexão P2P pronta. Envie a primeira mensagem.' : 'Crie uma sala e compartilhe um convite para conectar automaticamente.'));
-      root.append(empty); return;
+      view.rendered.clear();
+      root.replaceChildren(emptyState());
+      if ($('p2p-jump')) $('p2p-jump').hidden = true;
+      return;
     }
+    if (!view.rendered.size) root.replaceChildren();
+    const alive = new Set();
+    let previous = null, added = false, addedOwn = false;
     for (const message of state.messages) {
-      const wrap = document.createElement('div');
-      wrap.className = 'p2p-msg' + (message.self ? ' self' : '') + (['once', 'revealed', 'burnt', 'once-wait'].includes(message.type) ? ' once' : '');
-      const meta = document.createElement('div'); meta.className = 'p2p-msg-meta';
-      meta.textContent = message.type === 'system' ? 'SISTEMA' : message.self ? 'VOCÊ' : 'OUTRO DISPOSITIVO';
-      meta.textContent += ' · ' + message.when;
-      const bubble = document.createElement('div'); bubble.className = 'p2p-bubble';
-      let text = message.text || '';
-      if (message.type === 'once') text = 'Mensagem de leitura única. O remetente deve continuar conectado. Após pedir abertura, o conteúdo só poderá ser entregue uma vez.';
-      if (message.type === 'once-wait') text = 'Pedido de abertura enviado. Aguardando liberação única do remetente…';
-      if (message.type === 'burnt') text = 'Mensagem consumida ou indisponível. Não pode ser reaberta pelo VEIL.';
-      if (message.type === 'revealed') text = message.text + '\n\nEste conteúdo será ocultado em até 30 segundos.';
-      bubble.textContent = text;
-      if (message.type === 'once') {
-        const btn = document.createElement('button'); btn.type = 'button';
-        btn.textContent = 'Abrir uma única vez'; btn.onclick = () => requestOnce(message.id); bubble.append(btn);
+      alive.add(message.id);
+      let entry = view.rendered.get(message.id);
+      const fresh = !entry;
+      if (fresh) {
+        entry = { el: document.createElement('div'), sig: '', type: '', fresh: true, grouped: false };
+        view.rendered.set(message.id, entry);
+        root.append(entry.el);
+        added = true; if (message.self) addedOwn = true;
       }
-      if (message.type === 'file' && message.fileUrl) {
-        const btn = document.createElement('button'); btn.type = 'button';
-        btn.textContent = 'Baixar arquivo recebido'; btn.onclick = () => {
-          const a = document.createElement('a'); a.href = message.fileUrl; a.download = message.fileName; a.click();
-        };
-        bubble.append(btn);
+      const grouped = Boolean(previous && previous.type === 'text' && message.type === 'text' && Boolean(previous.self) === Boolean(message.self) && previous.when === message.when);
+      const sig = signature(message) + (grouped ? '|g' : '');
+      if (entry.sig !== sig) {
+        entry.grouped = grouped;
+        buildMessage(entry, message, entry.type);
+        entry.sig = sig; entry.type = message.type; entry.fresh = false;
       }
-      wrap.append(meta, bubble); root.append(wrap);
+      previous = message;
     }
-    if (nearBottom) root.scrollTop = root.scrollHeight;
+    for (const [id, entry] of view.rendered) if (!alive.has(id)) { entry.el.remove(); view.rendered.delete(id); }
+    const jump = $('p2p-jump');
+    if (nearBottom || addedOwn) { root.scrollTop = root.scrollHeight; if (jump) jump.hidden = true; }
+    else if (added && jump) jump.hidden = false;
   }
 
   async function sendOnce(text) {
@@ -561,26 +770,49 @@
   async function sendFile(file) {
     if (file.size > MAX_FILE_BYTES) throw Error('O arquivo excede 5 MiB.');
     const content = new Uint8Array(await file.arrayBuffer());
+    let outgoing = null;
     try {
       const digest = hex(new Uint8Array(await crypto.subtle.digest('SHA-256', content)));
       const id = hex(random(16));
       const fname = sanitize(file.name);
       await sendEncrypted({ t: 'file-start', id, name: fname, mime: file.type.slice(0, 100), size: file.size, digest });
+      outgoing = { id, type: 'file-out', text: 'Enviando ' + fname + '…', self: true, when: now(), progress: 0 };
+      appendMessage(outgoing);
       for (let offset = 0, seq = 0; offset < content.length; offset += CHUNK_BYTES, seq++) {
         await sendEncrypted({ t: 'file-chunk', id, seq, b: toB64(content.subarray(offset, offset + CHUNK_BYTES)) });
+        const progress = Math.min(1, (offset + CHUNK_BYTES) / content.length);
+        if (progress - outgoing.progress >= 0.04) { outgoing.progress = progress; renderMessages(); }
       }
       await sendEncrypted({ t: 'file-end', id });
-      appendMessage({ id, type: 'text', text: 'Arquivo enviado: ' + fname + ' · ' + Math.ceil(file.size / 1024) + ' KB', self: true, when: now() });
+      outgoing.type = 'file-sent';
+      outgoing.text = 'Arquivo enviado: ' + fname + ' · ' + Math.ceil(file.size / 1024) + ' KB';
+      renderMessages();
+    } catch (e) {
+      if (outgoing) { outgoing.type = 'file-error'; outgoing.text = 'Envio interrompido: ' + sanitize(file.name); renderMessages(); }
+      throw e;
     } finally { content.fill(0); }
   }
 
+  function syncAttachment() {
+    const file = $('p2p-file').files && $('p2p-file').files[0];
+    $('p2p-file-label').textContent = file ? sanitize(file.name) + ' · ' + Math.ceil(file.size / 1024) + ' KiB' : 'Até 5 MiB';
+    if ($('p2p-attach-chip')) $('p2p-attach-chip').hidden = !file;
+    if (file && file.size > MAX_FILE_BYTES) { info('Arquivo de até 5 MiB por envio.', true); composeNote('Arquivo de até 5 MiB por envio.', 'error'); }
+    else if (view.started) defaultComposeNote();
+  }
+  function resizeDraft() {
+    const draft = $('p2p-draft');
+    if (!draft || !draft.style || typeof draft.scrollHeight !== 'number' || !UI) return;
+    draft.style.height = 'auto';
+    draft.style.height = Math.min(168, draft.scrollHeight) + 'px';
+  }
   async function onSubmit(event) {
     event.preventDefault();
     if (state.sendBusy || !state.authenticated || !state.channel || state.channel.readyState !== 'open') return;
     const text = $('p2p-draft').value.trim();
     const file = $('p2p-file').files && $('p2p-file').files[0];
-    if (!text && !file) { info('Digite uma mensagem ou selecione um arquivo.', true); return; }
-    if ($('p2p-once').checked && file) { info('A leitura única desta versão é apenas para texto. Desmarque a opção para enviar arquivos.', true); return; }
+    if (!text && !file) { info('Digite uma mensagem ou selecione um arquivo.', true); composeNote('Digite uma mensagem ou selecione um arquivo.', 'error'); return; }
+    if ($('p2p-once').checked && file) { info('A leitura única desta versão é apenas para texto. Desmarque a opção para enviar arquivos.', true); composeNote('Leitura única vale só para texto. Desative 1× para enviar o arquivo.', 'error'); return; }
     state.sendBusy = true;
     $('p2p-send').disabled = true;
     try {
@@ -588,24 +820,41 @@
         if ($('p2p-once').checked) await sendOnce(text);
         else await sendText(text);
       }
-      if (file) await sendFile(file);
       $('p2p-draft').value = '';
+      resizeDraft();
+      if (file) await sendFile(file);
       $('p2p-once').checked = false;
       $('p2p-file').value = '';
-      $('p2p-file-label').textContent = 'Até 5 MiB';
+      syncAttachment();
+      defaultComposeNote();
       info('Dados protegidos e entregues pelo canal direto.');
-    } catch (e) { info('Falha no envio: ' + errorText(e), true); }
-    finally { state.sendBusy = false; $('p2p-send').disabled = !state.authenticated; }
+      const send = $('p2p-send');
+      if (UI && send.classList && send.classList.add) { send.classList.remove('is-sent'); void send.offsetWidth; send.classList.add('is-sent'); }
+    } catch (e) { info('Falha no envio: ' + errorText(e), true); composeNote('Falha no envio: ' + errorText(e), 'error'); }
+    finally { state.sendBusy = false; $('p2p-send').disabled = !state.authenticated || view.phase !== 'connected'; }
   }
 
-  async function safeAction(action) {
+  function setupError(message) {
+    const box = $('p2p-setup-alert');
+    if (!box || !UI) return;
+    if (!message) { box.classList.add('hidden'); return; }
+    UI.notice(box, message, 'error');
+  }
+  async function safeAction(action, button) {
     if (state.collecting) return;
     state.collecting = true;
+    if (UI && button) UI.busy(button, true);
     $('p2p-create-offer').disabled = true;
     $('p2p-apply-signal').disabled = true;
+    setupError('');
     try { await action(); }
-    catch (e) { info(errorText(e), true); setStatus('Erro de negociação: ' + errorText(e), 'failed'); }
-    finally { state.collecting = false; $('p2p-create-offer').disabled = false; $('p2p-apply-signal').disabled = false; }
+    catch (e) {
+      info(errorText(e), true);
+      // Before a room exists this is an input problem, not a connection failure.
+      if (!state.room && UI) { setupError(errorText(e)); setStatus('Sem conexão P2P.', ''); }
+      else setStatus('Erro de negociação: ' + errorText(e), 'failed');
+    }
+    finally { state.collecting = false; $('p2p-create-offer').disabled = false; $('p2p-apply-signal').disabled = false; if (UI && button) UI.busy(button, false); }
   }
   async function copyText(text) {
     if (!text) throw Error('Não há nenhum código para copiar.');
@@ -700,6 +949,7 @@
     auto.pendingCandidates.length = 0;
     auto.seenSignals.clear();
     auto.offersBusy = false;
+    syncNet();
   }
   async function publishSignal(signal) {
     if (!auto.active || !auto.subscribed || !state.key) return;
@@ -719,6 +969,7 @@
     } else if (type === 9) {
       if (data.length < 3 || data[2] === 128) throw Error('Broker recusou a inscrição na sala.');
       auto.subscribed = true;
+      setTrack('peer');
       setAutoStatus(state.role === 'host' ? 'Sala disponível. Aguardando contato entrar com o convite.' : 'Convite recebido. Procurando o criador da sala...', true);
       if (auto.joinTimer) clearInterval(auto.joinTimer);
       if (state.role === 'guest') {
@@ -753,9 +1004,11 @@
     if (auto.remoteId && signal.from !== auto.remoteId) return; // one-to-one room
     if (signal.type === 'join' && state.role === 'host') {
       auto.remoteId = signal.from;
+      if (!state.authenticated && view.phase !== 'negotiating') { setPhase('negotiating'); setTrack('route'); }
       await hostOffer();
     } else if (signal.type === 'offer' && state.role === 'guest') {
       auto.remoteId = signal.from;
+      if (!state.authenticated && view.phase !== 'negotiating') { setPhase('negotiating'); setTrack('route'); }
       await guestAnswer(signal);
     } else if (signal.type === 'answer' && state.role === 'host') {
       if (state.pc && state.pc.signalingState === 'have-local-offer' && typeof signal.sdp === 'string' && signal.sdp.startsWith('v=0') && signal.sdp.length < 120000) {
@@ -839,6 +1092,8 @@
     try { socket = new WebSocket(endpoint, ['mqtt']); }
     catch (e) { setAutoStatus('Broker inacessível: ' + errorText(e)); return; }
     auto.socket = socket;
+    setTrack('broker');
+    if (view.phase !== 'negotiating') setPhase('waiting');
     if (auto.pingTimer) clearInterval(auto.pingTimer);
     auto.pingTimer = null;
     socket.binaryType = 'arraybuffer';
@@ -867,7 +1122,12 @@
         const delay = Math.min(12000, 1200 * auto.reconnectCount * auto.reconnectCount);
         setAutoStatus('Broker desconectado. Nova tentativa automática (' + auto.reconnectCount + '/4)...');
         auto.retryTimer = setTimeout(() => connectBroker(generation), delay);
-      } else if (!state.authenticated) setAutoStatus('Broker indisponível. Escolha outro serviço e clique Reconectar.');
+      } else if (!state.authenticated) {
+        setAutoStatus('Broker indisponível. Escolha outro serviço e clique Reconectar.');
+        if (auto.socket === socket) auto.socket = null;
+        setStatus('Serviço de encontro indisponível.', 'failed');
+        if (UI) UI.openDisclosure('p2p-net-body');
+      }
     };
     socket.onerror = () => { if (auto.active) setAutoStatus('Falha de rede com broker. Tentando restabelecer...'); };
     auto.pingTimer = setInterval(() => {
@@ -911,12 +1171,36 @@
       if (qr.isDark(y, x)) ctx.fillRect((x + quiet) * resolution, (y + quiet) * resolution, resolution, resolution);
     }
   }
+  function setCodeVeiled(veiled) {
+    const wrap = $('p2p-code-wrap'), toggle = $('p2p-code-toggle');
+    if (!wrap || !wrap.dataset) return;
+    wrap.dataset.veiled = String(veiled);
+    toggle.setAttribute('aria-pressed', String(!veiled));
+    toggle.textContent = veiled ? 'Mostrar texto' : 'Ocultar texto';
+  }
+  // The QR is only drawn while the panel is open, and wiped from the canvas when it closes.
+  function hideSecretQr() {
+    const panel = $('p2p-qr-panel');
+    if (!panel) return;
+    const wasOpen = !panel.hidden;
+    panel.hidden = true;
+    const button = $('p2p-show-qr');
+    if (button) button.setAttribute('aria-expanded', 'false');
+    const canvas = $('p2p-qr-canvas');
+    if (wasOpen && UI && canvas && canvas.getContext) { canvas.width = canvas.height = 1; }
+  }
   function openSecretQr() {
     const panel = $('p2p-qr-panel');
-    if (!panel.hidden) { panel.hidden = true; return; }
+    if (!panel.hidden) { hideSecretQr(); return; }
     renderSecretQr(); panel.hidden = false;
+    $('p2p-show-qr').setAttribute('aria-expanded', 'true');
+    if (UI) { UI.unveil(panel, 760); if (panel.scrollIntoView) panel.scrollIntoView({ behavior: UI.reduced() ? 'auto' : 'smooth', block: 'nearest' }); }
   }
   function setScanStatus(value) { if ($('p2p-scan-status')) $('p2p-scan-status').textContent = value; }
+  function openScanModal() {
+    const modal = $('p2p-scan-modal');
+    if (UI) UI.openModal(modal, closeQrScanner); else modal.hidden = false;
+  }
   function closeQrScanner() {
     state.scanEpoch++;
     if (state.scanInterval) clearInterval(state.scanInterval);
@@ -925,7 +1209,8 @@
     state.scannerStream = null;
     const video = $('p2p-scan-video');
     if (video) { if (typeof video.pause === 'function') video.pause(); video.srcObject = null; }
-    if ($('p2p-scan-modal')) $('p2p-scan-modal').hidden = true;
+    const modal = $('p2p-scan-modal');
+    if (modal) { if (UI) UI.closeModal(modal); else modal.hidden = true; }
   }
   async function findQr(text) {
     let token = String(text || '').trim();
@@ -947,10 +1232,12 @@
     if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) throw Error('A câmera requer navegador com permissões e contexto seguro (HTTPS ou file:// compatível).');
     const detector = await qrDetector();
     closeQrScanner();
-    $('p2p-scan-modal').hidden = false;
+    await new Promise((resolve) => setTimeout(resolve, UI && !UI.reduced() ? 220 : 0)); // let the closing transition finish
+    openScanModal();
     const stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } } });
     state.scannerStream = stream;
     const video = $('p2p-scan-video'); video.srcObject = stream; await video.play();
+    if ($('p2p-scan-modal').classList.add) $('p2p-scan-modal').classList.add('is-scanning');
     setScanStatus('Aponte a câmera para o QR Code VEIL, sem enviá-lo a terceiros.');
     let scanning = false;
     const scanEpoch = state.scanEpoch;
@@ -995,19 +1282,20 @@
   function ready() {
     $('p2p-host').onclick = () => chooseRole('host');
     $('p2p-guest').onclick = () => chooseRole('guest');
-    $('p2p-generate').onclick = () => safeAction(async () => installSession(hex(random(16)), random(32)));
+    $('p2p-generate').onclick = () => safeAction(async () => installSession(hex(random(16)), random(32)), $('p2p-generate'));
     $('p2p-join').onclick = () => safeAction(async () => {
       const token = $('p2p-join-code').value.trim();
       const parsed = parseToken(token);
       await installSession(parsed.room, parsed.secret, parsed.broker);
-    });
+    }, $('p2p-join'));
     $('p2p-enable-stun').onchange = () => { $('p2p-stun-block').hidden = !$('p2p-enable-stun').checked; };
     $('p2p-enable-turn').onchange = () => { $('p2p-turn-block').hidden = !$('p2p-enable-turn').checked; if (!$('p2p-enable-turn').checked) $('p2p-relay-only').checked = false; };
-    $('p2p-auto-retry').onclick = () => safeAction(retryAuto);
+    $('p2p-auto-retry').onclick = () => safeAction(retryAuto, $('p2p-auto-retry'));
+    $('p2p-banner-retry').onclick = () => safeAction(retryAuto, $('p2p-banner-retry'));
     const onBrokerChanged = () => {
       $('p2p-custom-broker').hidden = $('p2p-broker-url').value !== 'custom';
       try {
-        if (state.role === 'host' && state.room && state.secret) { state.token = makeToken(state.room, state.secret); $('p2p-code').textContent = state.token; $('p2p-qr-panel').hidden = true; }
+        if (state.role === 'host' && state.room && state.secret) { state.token = makeToken(state.room, state.secret); $('p2p-code').textContent = state.token; hideSecretQr(); }
         if (auto.active && state.room) safeAction(retryAuto);
       } catch(e) { setAutoStatus(errorText(e)); }
     };
@@ -1023,9 +1311,21 @@
       info('Canal reiniciado. A credencial da sala foi mantida apenas em memória.');
     };
     $('p2p-show-qr').onclick = () => safeAction(openSecretQr);
-    $('p2p-hide-qr').onclick = () => { $('p2p-qr-panel').hidden = true; };
+    $('p2p-hide-qr').onclick = hideSecretQr;
+    $('p2p-code-toggle').onclick = () => setCodeVeiled($('p2p-code-wrap').dataset.veiled === 'false');
+    $('p2p-leave').onclick = () => { chooseRole(state.role || 'host'); info('Você saiu da sala. A chave foi apagada da memória desta aba.'); if (UI) UI.toast('Você saiu da sala.'); };
+    $('p2p-tab-room').onclick = () => setPane('room');
+    $('p2p-tab-chat').onclick = () => setPane('chat');
+    $('p2p-jump').onclick = () => { const root = $('p2p-messages'); root.scrollTop = root.scrollHeight; $('p2p-jump').hidden = true; };
+    $('p2p-messages').onscroll = () => { const root = $('p2p-messages'); if (root.scrollHeight - root.scrollTop - root.clientHeight < 60 && $('p2p-jump')) $('p2p-jump').hidden = true; };
+    $('p2p-file-clear').onclick = () => { $('p2p-file').value = ''; syncAttachment(); };
+    $('p2p-once').onchange = defaultComposeNote;
+    $('p2p-draft').oninput = resizeDraft;
     $('p2p-save-qr').onclick = () => safeAction(async () => { const link = document.createElement('a'); link.download = 'VEIL_convite_SECRETO.png'; link.href = $('p2p-qr-canvas').toDataURL('image/png'); link.click(); });
-    $('p2p-scan-open').onclick = () => { $('p2p-scan-modal').hidden = false; setScanStatus('Ative a câmera ou selecione uma imagem. Nenhuma imagem é enviada.'); };
+    $('p2p-scan-open').onclick = () => {
+      openScanModal();
+      setScanStatus('BarcodeDetector' in window ? 'Ative a câmera ou selecione uma imagem. Nenhuma imagem é enviada.' : 'Este navegador não tem leitor de QR nativo. Use a câmera do sistema e cole o convite no campo da sala.');
+    };
     $('p2p-scan-start').onclick = () => safeAction(async () => { try { await startQrScanner(); } catch (e) { setScanStatus(errorText(e)); throw e; } });
     $('p2p-scan-close').onclick = closeQrScanner;
     $('p2p-scan-image').onchange = () => safeAction(async () => { try { await scanQrImage($('p2p-scan-image').files?.[0]); } catch (e) { setScanStatus(errorText(e)); throw e; } finally { $('p2p-scan-image').value = ''; } });
@@ -1033,21 +1333,38 @@
     $('p2p-padding').onchange = () => info($('p2p-padding').checked ? 'Preenchimento de comprimento ativado para novos frames.' : 'Preenchimento desativado. Tamanhos originais podem ser inferidos.');
     $('p2p-cover').onchange = scheduleCover;
     $('p2p-privacy-preset').onclick = () => { $('p2p-enable-turn').checked = true; $('p2p-turn-block').hidden = false; $('p2p-relay-only').checked = true; $('p2p-enable-stun').checked = false; $('p2p-stun-block').hidden = true; info('Modo relay-only ativo. Configure um TURN/TLS confiável com usuário e senha e reconecte. Sem TURN válido, nenhuma rota direta será usada.'); };
-    $('p2p-copy-secret').onclick = () => copyText(state.token).then(() => info('Credencial copiada. Trate como senha.')).catch((e) => info(errorText(e), true));
-    $('p2p-copy-signal').onclick = () => copyText($('p2p-local-signal').value).then(() => info('Código de negociação copiado.')).catch((e) => info(errorText(e), true));
+    $('p2p-copy-secret').onclick = () => copyText(state.token).then(() => { info('Credencial copiada. Trate como senha.'); if (UI) { UI.confirmLabel($('p2p-copy-secret'), 'Copiado'); UI.toast('Convite copiado. Trate como uma senha.'); } }).catch((e) => info(errorText(e), true));
+    $('p2p-copy-signal').onclick = () => copyText($('p2p-local-signal').value).then(() => { info('Código de negociação copiado.'); if (UI) UI.confirmLabel($('p2p-copy-signal'), 'Copiado'); }).catch((e) => info(errorText(e), true));
     $('p2p-compose').onsubmit = onSubmit;
     $('p2p-draft').onkeydown = (event) => {
-      if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); $('p2p-compose').requestSubmit(); }
+      // On touch keyboards Enter makes a new line; the send button is always within reach.
+      const touch = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
+      if (event.key === 'Enter' && !event.shiftKey && !event.isComposing && !touch) { event.preventDefault(); $('p2p-compose').requestSubmit(); }
     };
-    $('p2p-file').onchange = () => {
-      const file = $('p2p-file').files?.[0];
-      $('p2p-file-label').textContent = file ? sanitize(file.name) + ' · ' + Math.ceil(file.size / 1024) + ' KiB' : 'Até 5 MiB';
-      if (file && file.size > MAX_FILE_BYTES) info('Arquivo de até 5 MiB por envio.', true);
-    };
-    document.addEventListener('visibilitychange', () => { if (document.hidden) { burnAllRevealed(); closeQrScanner(); } });
+    $('p2p-file').onchange = syncAttachment;
+    wireDrop();
+    document.addEventListener('visibilitychange', () => { if (document.hidden) { burnAllRevealed(); closeQrScanner(); hideSecretQr(); } else if (chatVisible()) clearUnread(); });
+    if (UI) UI.onView((name) => { if (name === 'p2p' && chatVisible()) clearUnread(); });
     window.addEventListener('pagehide', () => { burnAllRevealed(); disconnect(true); });
     chooseRole('host');
+    view.started = true;
     if (!supported()) setStatus('WebRTC ou WebCrypto indisponível aqui. Veja o Guia.', 'failed');
+  }
+  // Drag a file onto the conversation to attach it (same input, same limits).
+  function wireDrop() {
+    const chat = $('p2p-chat');
+    if (!chat || !chat.classList || !chat.classList.add || !UI) return;
+    let depth = 0;
+    const hasFile = (event) => Array.from(event.dataTransfer?.types || []).includes('Files');
+    chat.addEventListener('dragenter', (event) => { if (!hasFile(event) || $('p2p-file').disabled) return; event.preventDefault(); depth++; chat.classList.add('is-dragging'); });
+    chat.addEventListener('dragover', (event) => { if (hasFile(event) && !$('p2p-file').disabled) event.preventDefault(); });
+    chat.addEventListener('dragleave', () => { depth = Math.max(0, depth - 1); if (!depth) chat.classList.remove('is-dragging'); });
+    chat.addEventListener('drop', (event) => {
+      depth = 0; chat.classList.remove('is-dragging');
+      if (!hasFile(event) || $('p2p-file').disabled) return;
+      event.preventDefault();
+      try { $('p2p-file').files = event.dataTransfer.files; syncAttachment(); } catch { composeNote('Não foi possível anexar pelo arrasto. Use o botão de anexo.', 'error'); }
+    });
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', ready);
   else ready();

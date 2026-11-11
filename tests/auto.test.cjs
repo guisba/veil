@@ -6,7 +6,7 @@ const path = require('node:path');
 const assert = require('node:assert/strict');
 const { webcrypto } = require('node:crypto');
 const { TextEncoder, TextDecoder } = require('node:util');
-const source = fs.readFileSync(path.join(__dirname, '..', 'p2p.js'), 'utf8');
+const source = fs.readFileSync(path.join(__dirname, '..', 'src', 'p2p.js'), 'utf8');
 const delay = (ms) => new Promise((r) => setTimeout(r, ms));
 
 class MockElement {

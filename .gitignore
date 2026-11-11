@@ -20,3 +20,4 @@ venv/
 screenshots-private/
 playwright-report/
 test-results/
+tests/e2e/package-lock.json

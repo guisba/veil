@@ -1,0 +1,529 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+<meta name="color-scheme" content="dark light">
+<meta name="theme-color" content="#14172a">
+<meta name="description" content="VEIL: conversa P2P cifrada por convite ou QR, envelopes protegidos por senha, leitura única local e chaves pós-quânticas quando o navegador oferece suporte. Funciona a partir de um único arquivo HTML.">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; font-src data:; connect-src wss:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>VEIL 2.2 — P2P Privacy & QR</title>
+<script>/*@theme-boot*/</script>
+<style>
+/*@css*/
+</style>
+</head>
+<body>
+<svg class="sprite" aria-hidden="true" focusable="false" width="0" height="0">
+  <defs>
+    <symbol id="i-chat" viewBox="0 0 24 24"><path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5v7a2.5 2.5 0 0 1-2.5 2.5H11l-4.6 3.6V16H6.5A2.5 2.5 0 0 1 4 13.500z"/></symbol>
+    <symbol id="i-envelope" viewBox="0 0 24 24"><rect x="3.5" y="5.500" width="17" height="13" rx="2.5"/><path d="m4.500 7.500 7.500 5.500 7.500-5.500"/></symbol>
+    <symbol id="i-once" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.500"/><path d="M10.200 9.300 12 8v8"/></symbol>
+    <symbol id="i-key" viewBox="0 0 24 24"><circle cx="8" cy="15.500" r="4"/><path d="m11 12.500 8.500-8.500M16 7.500l2.500 2.500"/></symbol>
+    <symbol id="i-check-doc" viewBox="0 0 24 24"><path d="M7 3.500h7l4 4V19a1.500 1.500 0 0 1-1.500 1.500h-9.500A1.500 1.500 0 0 1 5.500 19V5A1.500 1.500 0 0 1 7 3.500Z"/><path d="m9 13.500 2.200 2.200 4-4.400"/></symbol>
+    <symbol id="i-book" viewBox="0 0 24 24"><path d="M5 5.500A1.500 1.500 0 0 1 6.500 4H19v13.500H6.500A1.500 1.500 0 0 0 5 19zM5 19a1.500 1.500 0 0 0 1.500 1.500H19"/><path d="M9 8.500h6"/></symbol>
+    <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.500 12S6 5.500 12 5.500 21.500 12 21.500 12 18 18.500 12 18.500 2.500 12 2.500 12Z"/><circle cx="12" cy="12" r="2.800"/></symbol>
+    <symbol id="i-eye-off" viewBox="0 0 24 24"><path d="M4 4l16 16M9.900 6A9 9 0 0 1 12 5.500c6 0 9.500 6.500 9.500 6.500a17 17 0 0 1-3.100 3.800M6.300 7.700A16.500 16.500 0 0 0 2.500 12S6 18.500 12 18.500a9 9 0 0 0 3.300-.6"/><path d="M10 10a2.800 2.800 0 0 0 4 4"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8.500" y="8.500" width="11" height="11" rx="2"/><path d="M15.500 5.500v-.5a1.500 1.500 0 0 0-1.500-1.500H6A1.500 1.500 0 0 0 4.500 5v8A1.500 1.500 0 0 0 6 14.500h.5"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11m-4.500-4.500L12 15l4.500-4.500M5 19.500h14"/></symbol>
+    <symbol id="i-share" viewBox="0 0 24 24"><path d="M12 15V4m-4 4 4-4 4 4M6 12.500v5A1.500 1.500 0 0 0 7.500 19h9a1.500 1.500 0 0 0 1.500-1.500v-5"/></symbol>
+    <symbol id="i-qr" viewBox="0 0 24 24"><rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><path d="M14 14h2.500v2.500H14zM18 17.500h2M17 20h3M14 19.500h.5"/></symbol>
+    <symbol id="i-scan" viewBox="0 0 24 24"><path d="M4 8.500V6a2 2 0 0 1 2-2h2.500M15.500 4H18a2 2 0 0 1 2 2v2.500M20 15.500V18a2 2 0 0 1-2 2h-2.500M8.500 20H6a2 2 0 0 1-2-2v-2.500M4 12h16"/></symbol>
+    <symbol id="i-send" viewBox="0 0 24 24"><path d="M12 19V5.500m-5.500 5.500L12 5.500l5.500 5.500"/></symbol>
+    <symbol id="i-clip" viewBox="0 0 24 24"><path d="m19 11.500-6.800 6.800a4.200 4.200 0 0 1-6-6l7.300-7.300a2.800 2.800 0 0 1 4 4l-7.200 7.200a1.400 1.400 0 0 1-2-2l6.500-6.500"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
+    <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="10.500" width="14" height="9.500" rx="2.200"/><path d="M8.500 10.500V8a3.500 3.500 0 0 1 7 0v2.500"/></symbol>
+    <symbol id="i-unlock" viewBox="0 0 24 24"><rect x="5" y="10.500" width="14" height="9.500" rx="2.200"/><path d="M8.500 10.500V8a3.500 3.500 0 0 1 6.700-1.400"/></symbol>
+    <symbol id="i-file" viewBox="0 0 24 24"><path d="M7 3.500h7l4 4V19a1.500 1.500 0 0 1-1.500 1.500h-9.500A1.500 1.500 0 0 1 5.500 19V5A1.500 1.500 0 0 1 7 3.500Z"/><path d="M14 3.500V8h4"/></symbol>
+    <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 16V5m-4.500 4.500L12 5l4.500 4.500M5 19.500h14"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.800"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.600 5.600 7 7M17 17l1.400 1.400M5.600 18.400 7 17M17 7l1.400-1.400"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M19.500 14.200A7.800 7.800 0 0 1 9.800 4.500a7.800 7.800 0 1 0 9.700 9.700Z"/></symbol>
+    <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.500"/><path d="M12 11v5.500M12 7.800v.2"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 4.500 3.500 19h17L12 4.500ZM12 10v4.500M12 16.800v.2"/></symbol>
+    <symbol id="i-ok" viewBox="0 0 24 24"><path d="m5 12.500 4.500 4.500L19 7.500"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M19.500 12a7.500 7.500 0 1 1-2.200-5.300M19.500 4.500v4h-4"/></symbol>
+    <symbol id="i-exit" viewBox="0 0 24 24"><path d="M14 5.500h3A1.500 1.500 0 0 1 18.500 7v10a1.500 1.500 0 0 1-1.500 1.500h-3M10.500 15.500 14 12l-3.500-3.500M14 12H4.500"/></symbol>
+    <symbol id="i-wand" viewBox="0 0 24 24"><path d="m5 19 9.500-9.500M14.500 5.500l.7 1.800 1.800.7-1.800.7-.7 1.800-.7-1.800-1.800-.7 1.800-.7zM18.500 13l.4 1.100 1.100.4-1.100.4-.4 1.100-.4-1.100-1.100-.4 1.100-.4z"/></symbol>
+    <symbol id="i-camera" viewBox="0 0 24 24"><path d="M4 9a2 2 0 0 1 2-2h1.800l1.200-2h6l1.200 2H18a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><circle cx="12" cy="13" r="3.200"/></symbol>
+    <symbol id="i-image" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="2.200"/><path d="m4.500 16 4.500-4.500 4 4 2.500-2.500 4 4M15 9.500v.01"/></symbol>
+    <symbol id="i-plug" viewBox="0 0 24 24"><path d="M9 3.500v4M15 3.500v4M6.500 7.500h11V11a5.500 5.500 0 0 1-11 0zM12 16.500v4"/></symbol>
+  </defs>
+</svg>
+
+<a class="skip" href="#main">Pular para o conteúdo</a>
+
+<div class="app" id="app">
+  <header class="rail" aria-label="VEIL">
+    <div class="brand">
+      <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true"><path pathLength="1" d="M4.500 7Q16 34 27.500 7"/><path pathLength="1" d="M10 7Q16 24 22 7"/><path pathLength="1" d="M14.300 7Q16 14 17.700 7"/></svg>
+      <span class="brand-name">veil</span>
+      <span class="brand-ver">2.2</span>
+    </div>
+
+    <nav class="nav" id="nav" aria-label="Seções">
+      <span class="nav-pill" id="nav-pill" aria-hidden="true"></span>
+      <button type="button" class="nav-item" data-view="p2p"><svg class="ico"><use href="#i-chat"/></svg><span>Conversa</span></button>
+      <button type="button" class="nav-item" data-view="encrypt"><svg class="ico"><use href="#i-envelope"/></svg><span>Envelope</span></button>
+      <button type="button" class="nav-item" data-view="once"><svg class="ico"><use href="#i-once"/></svg><span><span class="nav-long">Leitura </span>única</span></button>
+      <button type="button" class="nav-item" data-view="keys"><svg class="ico"><use href="#i-key"/></svg><span>Chaves</span></button>
+      <button type="button" class="nav-item" data-view="tools"><svg class="ico"><use href="#i-check-doc"/></svg><span>Verificar</span></button>
+      <button type="button" class="nav-item" data-view="guide"><svg class="ico"><use href="#i-book"/></svg><span>Guia</span></button>
+    </nav>
+
+    <div class="rail-end">
+      <div class="netstate" id="netstate" data-net="idle" role="status" aria-live="polite">
+        <span class="netstate-dot" aria-hidden="true"></span>
+        <span><b id="netstate-title">Sem conexões abertas</b><small id="netstate-detail">Nada sai deste dispositivo agora.</small></span>
+      </div>
+      <button type="button" class="theme-toggle" id="theme-toggle" aria-label="Alternar tema claro ou escuro">
+        <svg class="ico ico-sun"><use href="#i-sun"/></svg><svg class="ico ico-moon"><use href="#i-moon"/></svg>
+        <span id="theme-label">Tema escuro</span>
+      </button>
+      <p class="rail-note">Sem conta e sem servidor VEIL.<br>Protótipo sem auditoria independente.</p>
+    </div>
+  </header>
+
+  <main class="main" id="main" tabindex="-1">
+
+    <!-- ───────────── Conversa P2P ───────────── -->
+    <section class="view" id="view-p2p" aria-labelledby="p2p-heading" hidden>
+      <header class="view-head">
+        <h1 id="p2p-heading" tabindex="-1">Uma sala para duas pessoas.</h1>
+        <p>Crie a sala, entregue o convite por um canal em que você confia e converse direto entre os dois dispositivos. Um serviço de encontro (broker) só apresenta os aparelhos, com a negociação cifrada; mensagens e arquivos seguem pelo canal WebRTC.</p>
+      </header>
+
+      <div class="pane-switch" role="tablist" aria-label="Painéis da conversa" id="p2p-pane-switch">
+        <span class="seg-thumb" aria-hidden="true"></span>
+        <button type="button" role="tab" class="seg" id="p2p-tab-room" aria-selected="true" aria-controls="p2p-room">Sala</button>
+        <button type="button" role="tab" class="seg" id="p2p-tab-chat" aria-selected="false" aria-controls="p2p-chat">Conversa<span class="seg-badge" id="p2p-unread" hidden></span></button>
+      </div>
+
+      <div class="p2p" id="p2p-grid" data-pane="room" data-phase="idle">
+        <section class="room" id="p2p-room" aria-label="Sala e conexão">
+          <div class="statusbar" aria-live="polite">
+            <span class="p2p-light" id="p2p-light"></span>
+            <span id="p2p-state">Sem conexão. Crie uma sala ou entre por convite.</span>
+          </div>
+
+          <div class="room-setup" id="p2p-setup">
+            <div class="segmented" role="group" aria-label="Como você quer começar">
+              <span class="seg-thumb" aria-hidden="true"></span>
+              <button class="seg" type="button" id="p2p-host" aria-pressed="false">Criar sala</button>
+              <button class="seg" type="button" id="p2p-guest" aria-pressed="false">Entrar com convite</button>
+            </div>
+
+            <div id="p2p-host-view" class="setup-pane" hidden>
+              <p class="lede">Você recebe um convite único com a chave da sala. Quem tiver o convite entra; trate-o como uma senha.</p>
+              <button id="p2p-generate" type="button" class="btn btn-primary btn-lg btn-block"><span class="btn-label">Criar sala</span></button>
+            </div>
+
+            <div id="p2p-guest-view" class="setup-pane" hidden>
+              <div class="field">
+                <label for="p2p-join-code">Convite recebido</label>
+                <textarea id="p2p-join-code" class="input code" rows="3" placeholder="VEILP2P2.…" spellcheck="false" autocapitalize="off" autocomplete="off"></textarea>
+              </div>
+              <div class="btn-row">
+                <button id="p2p-join" class="btn btn-primary btn-lg grow" type="button"><span class="btn-label">Entrar na sala</span></button>
+                <button id="p2p-scan-open" class="btn btn-lg" type="button"><svg class="ico"><use href="#i-scan"/></svg><span class="btn-label">Escanear QR</span></button>
+              </div>
+              <p class="hint">A câmera e as imagens são lidas neste navegador, sem envio. A leitura de QR depende do detector nativo do navegador.</p>
+            </div>
+            <div id="p2p-setup-alert" class="notice hidden" role="alert"></div>
+          </div>
+
+          <div id="p2p-session-panel" class="session" hidden>
+            <div class="session-block">
+              <div class="block-head"><h2>Encontro dos dispositivos</h2><button id="p2p-auto-retry" type="button" class="btn btn-sm"><svg class="ico"><use href="#i-refresh"/></svg><span class="btn-label">Reconectar</span></button></div>
+              <ol class="track" id="p2p-track" aria-hidden="true">
+                <li data-step="broker"><i></i><span>Broker</span></li>
+                <li data-step="peer"><i></i><span>Contato</span></li>
+                <li data-step="route"><i></i><span>Rota</span></li>
+                <li data-step="auth"><i></i><span>Chave</span></li>
+              </ol>
+              <p class="track-status" role="status" aria-live="polite"><span class="p2p-light" id="p2p-broker-light"></span><span id="p2p-auto-status">Aguardando criação ou entrada na sala.</span></p>
+            </div>
+
+            <div class="session-block" id="p2p-host-secret" hidden>
+              <div class="block-head"><h2>Convite secreto</h2><button type="button" class="link-btn" id="p2p-code-toggle" aria-pressed="false" aria-controls="p2p-code">Mostrar texto</button></div>
+              <div class="secret" id="p2p-code-wrap" data-veiled="true"><code class="secret-text" id="p2p-code">—</code></div>
+              <div class="btn-row">
+                <button id="p2p-copy-secret" class="btn grow" type="button"><svg class="ico"><use href="#i-copy"/></svg><span class="btn-label">Copiar convite</span></button>
+                <button id="p2p-show-qr" class="btn btn-primary grow" type="button" aria-expanded="false" aria-controls="p2p-qr-panel"><svg class="ico"><use href="#i-qr"/></svg><span class="btn-label">Mostrar QR Code</span></button>
+              </div>
+              <div id="p2p-qr-panel" class="qr" hidden>
+                <div class="qr-frame"><canvas id="p2p-qr-canvas" class="qr-canvas" role="img" aria-label="QR Code com o convite secreto da sala"></canvas></div>
+                <p class="qr-warning"><svg class="ico"><use href="#i-alert"/></svg>Este QR contém a chave da sala. Quem fotografá-lo pode entrar. Oculte quando não estiver em uso.</p>
+                <div class="btn-row"><button id="p2p-save-qr" type="button" class="btn btn-sm grow"><svg class="ico"><use href="#i-download"/></svg><span class="btn-label">Salvar PNG</span></button><button id="p2p-hide-qr" type="button" class="btn btn-sm grow"><svg class="ico"><use href="#i-eye-off"/></svg><span class="btn-label">Ocultar QR</span></button></div>
+              </div>
+            </div>
+
+            <div class="session-block">
+              <div class="block-head"><h2>Código de verificação</h2></div>
+              <div class="fingerprint" id="p2p-fingerprint" aria-live="polite">—</div>
+              <p class="hint">Deve ser igual nos dois dispositivos. Compare por voz ou outro canal: códigos diferentes significam convites diferentes.</p>
+            </div>
+
+            <div class="session-block">
+              <div class="block-head"><h2>Tráfego</h2></div>
+              <label class="switch"><input type="checkbox" id="p2p-padding" checked><span class="switch-ui" aria-hidden="true"></span><span class="switch-text">Arredondar o tamanho das mensagens<small>Preenche os frames cifrados em faixas fixas.</small></span></label>
+              <label class="switch"><input type="checkbox" id="p2p-cover"><span class="switch-ui" aria-hidden="true"></span><span class="switch-text">Tráfego de cobertura<small>Envia frames vazios em intervalos irregulares. Usa mais dados.</small></span></label>
+              <p class="hint">Dificultam algumas inferências de tamanho e atividade. Não escondem IP, destinos, horários nem o volume total, e não imitam outros aplicativos.</p>
+            </div>
+
+            <div class="disclosure" data-disclosure>
+              <button type="button" class="disclosure-head" aria-expanded="false" aria-controls="p2p-manual-body"><span>Troca manual de códigos, sem broker</span><svg class="ico"><use href="#i-chevron"/></svg></button>
+              <div class="disclosure-body" id="p2p-manual-body"><div class="disclosure-inner">
+                <p class="lede" id="p2p-instruction">Gere uma oferta ou cole a oferta recebida para negociar o canal.</p>
+                <button id="p2p-create-offer" class="btn" type="button"><span class="btn-label">Gerar oferta manual</span></button>
+                <div class="field"><label for="p2p-local-signal">Código deste dispositivo</label><textarea id="p2p-local-signal" class="input code" rows="3" spellcheck="false" readonly placeholder="VEILSDP1.…"></textarea></div>
+                <button id="p2p-copy-signal" class="btn btn-sm" type="button"><svg class="ico"><use href="#i-copy"/></svg><span class="btn-label">Copiar código</span></button>
+                <div class="field"><label for="p2p-remote-signal">Código recebido</label><textarea id="p2p-remote-signal" class="input code" rows="3" spellcheck="false" autocapitalize="off" placeholder="VEILSDP1.…"></textarea></div>
+                <button id="p2p-apply-signal" class="btn" type="button"><span class="btn-label">Aplicar código</span></button>
+              </div></div>
+            </div>
+
+            <p class="route-note" id="p2p-route-note" role="status" aria-live="polite">Nenhuma mensagem enviada. Aguardando o outro dispositivo.</p>
+
+            <div class="btn-row session-actions">
+              <button id="p2p-reset" class="btn grow" type="button"><svg class="ico"><use href="#i-plug"/></svg><span class="btn-label">Desconectar canal</span></button>
+              <button id="p2p-leave" class="btn btn-danger grow" type="button"><svg class="ico"><use href="#i-exit"/></svg><span class="btn-label">Sair da sala</span></button>
+            </div>
+          </div>
+
+          <div class="disclosure" data-disclosure>
+            <button type="button" class="disclosure-head" aria-expanded="false" aria-controls="p2p-net-body"><span>Rede e privacidade de IP</span><svg class="ico"><use href="#i-chevron"/></svg></button>
+            <div class="disclosure-body" id="p2p-net-body"><div class="disclosure-inner">
+              <div class="field">
+                <label for="p2p-broker-url">Serviço de encontro (WSS/TLS)</label>
+                <select id="p2p-broker-url" class="input select"><option value="wss://broker.emqx.io:8084/mqtt">EMQX · demonstração pública</option><option value="wss://broker.connectmq.com:8084/mqtt">ConnectMQ · demonstração pública</option><option value="wss://test.mosquitto.org:8081">Mosquitto · demonstração pública</option><option value="custom">Meu broker WSS/TLS privado (avançado)</option></select>
+                <p class="hint">O broker vê IP, horário, volume e um identificador aleatório da sala. A negociação é cifrada com AES-GCM. Serviços públicos servem para testes, sem garantia de disponibilidade. O convite leva o endereço ao outro dispositivo.</p>
+              </div>
+              <div id="p2p-custom-broker" class="field" hidden><label for="p2p-broker-custom-url">Endereço WSS do seu broker</label><input id="p2p-broker-custom-url" class="input" placeholder="wss://seu-broker.example:443/mqtt" autocomplete="off" spellcheck="false" inputmode="url"></div>
+
+              <label class="switch"><input type="checkbox" id="p2p-enable-stun" checked><span class="switch-ui" aria-hidden="true"></span><span class="switch-text">STUN ativo<small>Aumenta a chance de conexão direta entre redes diferentes. Revela seu IP ao serviço STUN e ao contato.</small></span></label>
+              <div id="p2p-stun-block" class="field"><label for="p2p-stun-url">Servidor STUN</label><input class="input" id="p2p-stun-url" value="stun:stun.l.google.com:19302" spellcheck="false" autocomplete="off"></div>
+
+              <label class="switch"><input type="checkbox" id="p2p-enable-turn"><span class="switch-ui" aria-hidden="true"></span><span class="switch-text">Relay TURN/TLS<small>Opcional. Retransmite o tráfego cifrado quando a rede bloqueia conexões diretas.</small></span></label>
+              <div id="p2p-turn-block" class="subfields" hidden>
+                <div class="field"><label for="p2p-turn-url">Servidor TURN</label><input id="p2p-turn-url" class="input" value="turns:global.relay.metered.ca:443?transport=tcp" autocomplete="off" spellcheck="false"></div>
+                <div class="field-pair">
+                  <div class="field"><label for="p2p-turn-user">Usuário TURN</label><input id="p2p-turn-user" class="input" autocomplete="off" spellcheck="false"></div>
+                  <div class="field"><label for="p2p-turn-pass">Senha TURN</label><input id="p2p-turn-pass" type="password" class="input" autocomplete="new-password"></div>
+                </div>
+                <label class="switch"><input type="checkbox" id="p2p-relay-only"><span class="switch-ui" aria-hidden="true"></span><span class="switch-text">Somente relay<small>Não tenta rota direta. O contato não vê seu IP; o serviço TURN vê.</small></span></label>
+              </div>
+              <button id="p2p-privacy-preset" class="btn" type="button"><span class="btn-label">Proteger meu IP do contato</span></button>
+              <p class="hint">Exige um TURN real com usuário e senha; sem ele o VEIL não cai para conexão direta. Um TURN/TLS na porta 443 atravessa redes restritivas, mas não disfarça o tráfego nem impede análise pelo provedor.</p>
+            </div></div>
+          </div>
+
+          <div class="disclosure" data-disclosure>
+            <button type="button" class="disclosure-head" aria-expanded="false" aria-controls="p2p-limits-body"><span>Limites desta conversa</span><svg class="ico"><use href="#i-chevron"/></svg></button>
+            <div class="disclosure-body" id="p2p-limits-body"><div class="disclosure-inner">
+              <ul class="limits">
+                <li>O broker público é compartilhado e observa metadados de conexão, não a negociação cifrada.</li>
+                <li>Operadora e Wi-Fi ainda veem destinos, horários e volume de tráfego.</li>
+                <li>STUN pode revelar IPs ao serviço e ao contato. TURN/TLS e o modo somente relay ajudam em redes restritas, sem garantir anonimato.</li>
+                <li>O conteúdo é protegido por WebRTC DTLS e, na aplicação, por AES-256-GCM.</li>
+                <li>Leitura única: o remetente libera o texto uma vez, enquanto estiver online. Isso não impede capturas de tela, cópias de memória ou gravações.</li>
+                <li>Preenchimento e cobertura não escondem os destinos nem garantem ausência de rastros.</li>
+                <li>O QR carrega a chave completa. A câmera exige contexto seguro e um navegador com detector de QR.</li>
+                <li>Não há auditoria independente.</li>
+              </ul>
+            </div></div>
+          </div>
+        </section>
+
+        <section class="chat" id="p2p-chat" aria-label="Conversa cifrada">
+          <header class="chat-head">
+            <div><h2>Conversa direta</h2><p>Dois dispositivos, sem histórico gravado pelo VEIL.</p></div>
+            <span class="tag" id="p2p-channel-tag" data-state="idle">DESCONECTADO</span>
+          </header>
+          <div class="chat-stage" id="p2p-stage">
+            <canvas class="veil-canvas" id="veil-canvas" aria-hidden="true"></canvas>
+            <div class="messages" id="p2p-messages" role="log" aria-live="polite" aria-relevant="additions" tabindex="0" aria-label="Mensagens"></div>
+            <div class="chat-banner" id="p2p-banner" hidden><span id="p2p-banner-text"></span><button type="button" class="btn btn-sm btn-primary" id="p2p-banner-retry"><svg class="ico"><use href="#i-refresh"/></svg><span class="btn-label">Reconectar</span></button></div>
+            <button type="button" class="jump" id="p2p-jump" hidden><svg class="ico"><use href="#i-send"/></svg>Novas mensagens</button>
+            <div class="dropveil" id="p2p-dropveil" aria-hidden="true"><svg class="ico"><use href="#i-upload"/></svg>Solte para anexar</div>
+          </div>
+          <form id="p2p-compose" class="composer" autocomplete="off">
+            <div class="attach-chip" id="p2p-attach-chip" hidden><svg class="ico"><use href="#i-file"/></svg><span id="p2p-file-label">Até 5 MiB</span><button type="button" class="icon-btn icon-btn-sm" id="p2p-file-clear" aria-label="Remover anexo"><svg class="ico"><use href="#i-close"/></svg></button></div>
+            <div class="composer-row">
+              <label class="icon-btn attach" title="Anexar arquivo, até 5 MiB"><svg class="ico"><use href="#i-clip"/></svg><span class="sr">Anexar arquivo, até 5 MiB</span><input type="file" id="p2p-file" disabled></label>
+              <textarea id="p2p-draft" aria-label="Escrever mensagem" rows="1" maxlength="12000" placeholder="Conecte-se para escrever" disabled></textarea>
+              <label class="once-toggle" title="Leitura única: o destinatário abre uma vez"><input type="checkbox" id="p2p-once" disabled><span class="once-face" aria-hidden="true">1×<i>única</i></span><span class="sr">Leitura única</span></label>
+              <button class="send" type="submit" id="p2p-send" disabled aria-label="Enviar"><svg class="ico"><use href="#i-send"/></svg></button>
+            </div>
+            <p class="composer-note" id="p2p-compose-note">Enter envia, Shift + Enter quebra a linha. Mantenha os dois dispositivos abertos.</p>
+          </form>
+        </section>
+      </div>
+
+      <div class="modal" id="p2p-scan-modal" role="dialog" aria-modal="true" aria-labelledby="p2p-scan-title" hidden>
+        <div class="modal-card">
+          <div class="modal-head"><h2 id="p2p-scan-title">Escanear convite</h2><button type="button" class="icon-btn" id="p2p-scan-close" aria-label="Fechar leitor"><svg class="ico"><use href="#i-close"/></svg></button></div>
+          <div class="scan-frame"><video id="p2p-scan-video" playsinline muted autoplay aria-label="Imagem da câmera para leitura de QR Code"></video><div class="scan-reticle" aria-hidden="true"><i></i></div></div>
+          <p class="scan-status" role="status" aria-live="polite" id="p2p-scan-status">A câmera só é ativada após sua permissão.</p>
+          <div class="btn-row"><button type="button" class="btn btn-primary grow" id="p2p-scan-start"><svg class="ico"><use href="#i-camera"/></svg><span class="btn-label">Ativar câmera</span></button><label class="btn grow file-btn"><svg class="ico"><use href="#i-image"/></svg><span class="btn-label">Importar foto de QR</span><input id="p2p-scan-image" type="file" accept="image/*" aria-label="Selecionar imagem com QR Code"></label></div>
+          <p class="hint">Se este navegador não tiver detector de QR, use a câmera do sistema e cole o convite no campo da sala. Nenhuma imagem ou vídeo é enviado.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ───────────── Envelope: proteger / abrir ───────────── -->
+    <section class="view" id="view-envelope" aria-labelledby="env-heading" hidden>
+      <header class="view-head">
+        <h1 id="env-heading" tabindex="-1">Envelope protegido por senha.</h1>
+        <p>Feche uma mensagem ou um arquivo em um envelope portátil e autenticado. Tudo é processado neste dispositivo; quem receber precisa do envelope e da senha.</p>
+      </header>
+      <div class="segmented mode-switch" role="tablist" aria-label="Proteger ou abrir" id="env-mode">
+        <span class="seg-thumb" aria-hidden="true"></span>
+        <button type="button" role="tab" class="seg" id="env-tab-encrypt" aria-selected="true" aria-controls="pane-encrypt"><svg class="ico"><use href="#i-lock"/></svg>Proteger</button>
+        <button type="button" role="tab" class="seg" id="env-tab-decrypt" aria-selected="false" aria-controls="pane-decrypt"><svg class="ico"><use href="#i-unlock"/></svg>Abrir</button>
+      </div>
+
+      <div class="subview" id="pane-encrypt" role="tabpanel" aria-labelledby="env-tab-encrypt">
+        <div class="sheet">
+          <div class="sheet-main">
+            <div class="field">
+              <div class="field-top"><span class="field-title" id="enc-kind-label">O que você quer proteger</span>
+                <div class="segmented segmented-sm" role="tablist" aria-labelledby="enc-kind-label"><span class="seg-thumb" aria-hidden="true"></span><button type="button" id="enc-tab-text" class="seg" role="tab" aria-selected="true">Mensagem</button><button type="button" id="enc-tab-file" class="seg" role="tab" aria-selected="false">Arquivo</button></div>
+              </div>
+              <div id="enc-text-field"><label class="sr" for="enc-text">Mensagem original</label><textarea id="enc-text" class="input prose" rows="7" placeholder="Escreva ou cole a mensagem." spellcheck="false" autocapitalize="off"></textarea><p class="hint">Acentos e emojis são preservados. Nada é salvo automaticamente.</p></div>
+              <div class="hidden" id="enc-file-field"><div class="dropzone" id="enc-drop"><svg class="ico"><use href="#i-upload"/></svg><b id="enc-file-name">Clique para selecionar ou arraste um arquivo</b><small id="enc-file-info">Até 24 MiB · qualquer formato</small><input type="file" id="enc-file" aria-label="Selecionar arquivo para criptografar"></div><p class="hint">O nome e o tipo do arquivo ficam dentro do envelope, cifrados.</p></div>
+            </div>
+
+            <div class="field">
+              <div class="field-top"><label for="enc-password">Senha</label><button class="link-btn" id="gen-password" type="button"><svg class="ico"><use href="#i-wand"/></svg>Gerar senha forte</button></div>
+              <div class="password"><input class="input" id="enc-password" type="password" autocomplete="new-password" placeholder="Longa e exclusiva, 10 caracteres ou mais"><button type="button" class="icon-btn toggle-password" data-target="enc-password" aria-label="Mostrar senha" aria-pressed="false"><svg class="ico ico-show"><use href="#i-eye"/></svg><svg class="ico ico-hide"><use href="#i-eye-off"/></svg></button></div>
+              <div class="meter" aria-hidden="true"><span id="strength-bar"></span></div>
+              <p class="hint" id="strength-label" aria-live="polite">Use 12+ caracteres; uma frase-senha longa é melhor.</p>
+            </div>
+            <div class="field">
+              <label for="enc-password-confirm">Repita a senha</label>
+              <div class="password"><input class="input" id="enc-password-confirm" type="password" autocomplete="new-password" placeholder="Evita erros de digitação"><button type="button" class="icon-btn toggle-password" data-target="enc-password-confirm" aria-label="Mostrar confirmação de senha" aria-pressed="false"><svg class="ico ico-show"><use href="#i-eye"/></svg><svg class="ico ico-hide"><use href="#i-eye-off"/></svg></button></div>
+              <p class="hint">A senha não pode ser recuperada. Guarde-a antes de apagar o original.</p>
+            </div>
+
+            <div class="disclosure" data-disclosure>
+              <button type="button" class="disclosure-head" aria-expanded="false" aria-controls="enc-advanced"><span>Algoritmo e derivação<small id="enc-summary">AES-256-GCM · PBKDF2/SHA-256 · 600.000 iterações</small></span><svg class="ico"><use href="#i-chevron"/></svg></button>
+              <div class="disclosure-body" id="enc-advanced"><div class="disclosure-inner">
+                <div class="field"><label for="enc-suite">Algoritmo</label><select class="input select" id="enc-suite"><optgroup label="Recomendados"><option value="AES-256-GCM">AES-256-GCM · recomendado</option><option value="AES-192-GCM">AES-192-GCM</option><option value="AES-128-GCM">AES-128-GCM</option><option value="CHACHA20-POLY1305">ChaCha20-Poly1305 · suporte variável</option><option value="AES-256-OCB">AES-256-OCB · suporte variável</option><option value="AES-128-OCB">AES-128-OCB · suporte variável</option></optgroup><optgroup label="Autenticados (Encrypt-then-MAC)"><option value="AES-256-CBC-HMAC">AES-256-CBC + HMAC-SHA256</option><option value="AES-256-CTR-HMAC">AES-256-CTR + HMAC-SHA256</option></optgroup><optgroup label="Pós-quântico (exige chave pública)"><option value="PQ-ML-KEM-768">ML-KEM-768 + AES-256-GCM</option><option value="PQ-ML-KEM-1024">ML-KEM-1024 + AES-256-GCM</option><option value="PQ-MLKEM768-X25519">MLKEM768-X25519 + AES-256-GCM</option></optgroup></select><p class="hint" id="enc-suite-help">Criptografia autenticada AEAD, adequada à proteção de arquivos e mensagens.</p></div>
+                <div class="field-pair">
+                  <div class="field"><label for="enc-kdf">Derivação da senha</label><select class="input select" id="enc-kdf"><option value="SHA-256">PBKDF2 / SHA-256</option><option value="SHA-512">PBKDF2 / SHA-512</option></select></div>
+                  <div class="field"><label for="enc-work">Custo de derivação</label><select class="input select" id="enc-work"><option value="600000">Forte · 600.000 iterações</option><option value="310000">Equilibrado · 310.000 iterações</option><option value="900000">Reforçado · 900.000 iterações</option></select></div>
+                </div>
+                <p class="hint">Salt aleatório por envelope. Mais iterações dificultam adivinhar a senha e pedem mais processamento.</p>
+              </div></div>
+            </div>
+            <div class="field hidden" id="enc-pq-wrap"><label for="enc-pq-public">Chave pública do destinatário</label><textarea id="enc-pq-public" class="input code" rows="4" placeholder="PQPK1.…" spellcheck="false" autocapitalize="off"></textarea><p class="hint" id="enc-pq-state">Modo híbrido: a senha e a chave privada pós-quântica serão necessárias para abrir.</p></div>
+
+            <div class="btn-row">
+              <button type="button" class="btn btn-primary btn-lg" id="encrypt-btn"><svg class="ico"><use href="#i-lock"/></svg><span class="btn-label">Proteger</span></button>
+              <button type="button" class="btn btn-ghost btn-lg" id="enc-clear"><span class="btn-label">Limpar campos</span></button>
+            </div>
+            <div id="enc-alert" class="notice hidden" role="alert"></div>
+          </div>
+
+          <aside class="sheet-side" aria-label="Resultado">
+            <div class="placeholder" id="enc-placeholder"><svg class="ico"><use href="#i-envelope"/></svg><p>O envelope aparece aqui, pronto para copiar, salvar ou compartilhar.</p></div>
+            <div id="enc-result" class="result hidden">
+              <div class="result-head"><strong>Envelope pronto</strong><span class="tag" data-state="ready" id="enc-result-suite">AES-256-GCM</span></div>
+              <pre class="result-text code" id="enc-result-text" tabindex="0"></pre>
+              <div class="digest"><span>SHA-256 do envelope</span><code id="enc-sha256">Calculando…</code><button class="link-btn" type="button" id="copy-digest">Copiar hash</button></div>
+              <div class="btn-grid">
+                <button type="button" class="btn btn-primary" id="copy-encrypted"><svg class="ico"><use href="#i-copy"/></svg><span class="btn-label">Copiar código</span></button>
+                <button type="button" class="btn" id="download-encrypted"><svg class="ico"><use href="#i-download"/></svg><span class="btn-label">Salvar .veil</span></button>
+                <button type="button" class="btn" id="share-encrypted"><svg class="ico"><use href="#i-share"/></svg><span class="btn-label">Compartilhar</span></button>
+                <button type="button" class="btn" id="move-to-decrypt"><svg class="ico"><use href="#i-unlock"/></svg><span class="btn-label">Testar abertura</span></button>
+              </div>
+            </div>
+          </aside>
+        </div>
+      </div>
+
+      <div class="subview hidden" id="pane-decrypt" role="tabpanel" aria-labelledby="env-tab-decrypt">
+        <div class="sheet">
+          <div class="sheet-main">
+            <div class="field">
+              <div class="field-top"><label for="dec-input">Envelope</label><label class="link-btn" for="dec-file"><svg class="ico"><use href="#i-file"/></svg>Abrir arquivo .veil<input class="visually-hidden" id="dec-file" type="file" accept=".veil,.txt,application/octet-stream,text/plain"></label></div>
+              <textarea id="dec-input" class="input code" rows="7" spellcheck="false" autocapitalize="off" placeholder="VEIL1.eyJ2IjoxLCJzdWl0ZSI6…"></textarea>
+              <div id="inspection" class="notice notice-info hidden" aria-live="polite"></div>
+            </div>
+            <div class="field"><label for="dec-password">Senha</label><div class="password"><input class="input" id="dec-password" type="password" autocomplete="off" placeholder="A senha usada ao proteger"><button type="button" class="icon-btn toggle-password" data-target="dec-password" aria-label="Mostrar senha" aria-pressed="false"><svg class="ico ico-show"><use href="#i-eye"/></svg><svg class="ico ico-hide"><use href="#i-eye-off"/></svg></button></div></div>
+            <div id="dec-pq-wrap" class="hidden">
+              <div class="field"><label for="dec-pq-private">Chave privada protegida do destinatário</label><textarea class="input code" rows="4" id="dec-pq-private" spellcheck="false" placeholder="PQSK1.…"></textarea></div>
+              <div class="field"><label for="dec-pq-pass">Senha da chave privada</label><div class="password"><input class="input" type="password" id="dec-pq-pass" placeholder="Em branco = usar a senha acima"><button type="button" class="icon-btn toggle-password" data-target="dec-pq-pass" aria-label="Mostrar senha da chave privada" aria-pressed="false"><svg class="ico ico-show"><use href="#i-eye"/></svg><svg class="ico ico-hide"><use href="#i-eye-off"/></svg></button></div></div>
+            </div>
+            <div class="btn-row">
+              <button type="button" class="btn btn-primary btn-lg" id="decrypt-btn"><svg class="ico"><use href="#i-unlock"/></svg><span class="btn-label">Abrir envelope</span></button>
+              <button type="button" class="btn btn-lg" id="inspect-btn"><span class="btn-label">Identificar formato</span></button>
+              <button type="button" class="btn btn-ghost btn-lg" id="dec-clear"><span class="btn-label">Limpar</span></button>
+            </div>
+            <div id="dec-alert" role="alert" class="notice hidden"></div>
+            <p class="hint">O cabeçalho informa o algoritmo, mas só é autenticado quando a senha confere. Outros formatos são reconhecidos pela assinatura, não abertos.</p>
+          </div>
+          <aside class="sheet-side" aria-label="Conteúdo aberto">
+            <div class="placeholder" id="dec-placeholder"><svg class="ico"><use href="#i-unlock"/></svg><p>O conteúdo aparece aqui depois que a senha for verificada.</p></div>
+            <div id="dec-result" class="result hidden">
+              <div class="result-head"><strong>Autenticação verificada</strong><span class="tag" data-state="ready" id="dec-result-type">MENSAGEM</span></div>
+              <pre id="dec-result-text" class="result-text prose" tabindex="0"></pre>
+              <div class="btn-grid"><button type="button" class="btn btn-primary" id="copy-decrypted"><svg class="ico"><use href="#i-copy"/></svg><span class="btn-label">Copiar mensagem</span></button><button type="button" class="btn" id="download-decrypted"><svg class="ico"><use href="#i-download"/></svg><span class="btn-label">Salvar conteúdo</span></button></div>
+            </div>
+          </aside>
+        </div>
+      </div>
+    </section>
+
+    <!-- ───────────── Leitura única ───────────── -->
+    <section class="view" id="view-once" aria-labelledby="once-heading" hidden>
+      <header class="view-head">
+        <h1 id="once-heading" tabindex="-1">Abre uma vez, neste navegador.</h1>
+        <p>Guarde um segredo cifrado no armazenamento deste navegador. Com a senha correta, o registro é apagado antes de o texto aparecer. Para leitura única entre dois dispositivos, use a Conversa.</p>
+      </header>
+      <div id="once-local-panel" class="columns">
+        <div class="panel">
+          <h2>Guardar um segredo</h2>
+          <div class="field"><label for="once-local-text">Mensagem</label><textarea class="input prose" rows="5" id="once-local-text" maxlength="100000" placeholder="O segredo que só poderá ser aberto uma vez." spellcheck="false"></textarea></div>
+          <div class="field-pair"><div class="field"><label for="once-local-pass">Senha de acesso</label><input class="input" type="password" id="once-local-pass" autocomplete="new-password" placeholder="Mínimo de 10 caracteres"></div><div class="field"><label for="once-local-confirm">Repita a senha</label><input class="input" type="password" id="once-local-confirm" autocomplete="new-password" placeholder="Digite novamente"></div></div>
+          <div class="field"><label for="once-local-expire">Expira em</label><select class="input select" id="once-local-expire"><option value="3600000">1 hora</option><option value="86400000" selected>24 horas</option><option value="604800000">7 dias</option></select><p class="hint">Depois do prazo, o registro não abre mais e é descartado na próxima tentativa.</p></div>
+          <div class="btn-row"><button class="btn btn-primary btn-lg" type="button" id="once-local-create"><span class="btn-label">Guardar para uma leitura</span></button></div>
+          <div class="notice hidden" role="alert" id="once-local-alert"></div>
+        </div>
+
+        <div class="panel">
+          <div class="block-head"><h2>Aguardando leitura</h2><button class="btn btn-sm" type="button" id="once-local-refresh"><svg class="ico"><use href="#i-refresh"/></svg><span class="btn-label">Atualizar lista</span></button></div>
+          <div id="once-local-list" class="once-items" aria-live="polite"><p class="hint">Consultando este navegador…</p></div>
+          <hr class="rule">
+          <h2>Abrir e apagar</h2>
+          <div class="field"><label for="once-local-id">Identificador</label><input class="input code" id="once-local-id" autocomplete="off" spellcheck="false" placeholder="VL1.…"></div>
+          <div class="field"><label for="once-local-open-pass">Senha</label><input class="input" type="password" id="once-local-open-pass" autocomplete="off" placeholder="Senha do segredo"></div>
+          <div class="btn-row"><button class="btn btn-primary btn-lg" type="button" id="once-local-open"><span class="btn-label">Abrir e apagar</span></button></div>
+          <p class="hint">Uma senha incorreta não apaga o registro. Depois da leitura, o texto fica visível por 60 segundos.</p>
+          <div id="once-local-open-alert" class="notice hidden" role="alert"></div>
+        </div>
+      </div>
+
+      <div id="once-reveal" class="reveal hidden" role="region" aria-label="Mensagem temporária" aria-live="off" tabindex="-1">
+        <div class="reveal-head">
+          <div><strong>Mensagem aberta</strong><p>O registro já foi apagado. Este texto some sozinho.</p></div>
+          <div class="ring" id="once-ring" style="--p:1"><svg viewBox="0 0 44 44" aria-hidden="true"><circle cx="22" cy="22" r="19"/><circle class="ring-arc" cx="22" cy="22" r="19" pathLength="1"/></svg><span class="ring-num" id="once-countdown">60 s</span></div>
+        </div>
+        <pre id="once-reveal-text" class="reveal-text prose"></pre>
+        <div class="btn-row"><button class="btn btn-primary" type="button" id="once-close"><svg class="ico"><use href="#i-eye-off"/></svg><span class="btn-label">Ocultar agora</span></button></div>
+      </div>
+      <p class="fineprint">Apagar é melhor esforço: não destrói backups, capturas de tela, cópias em memória nem o que já foi copiado. Na conversa P2P, os dois dispositivos precisam continuar conectados até a abertura. Entregar uma única vez não impede o destinatário de guardar a mensagem.</p>
+    </section>
+
+    <!-- ───────────── Chaves pós-quânticas ───────────── -->
+    <section class="view" id="view-keys" aria-labelledby="keys-heading" hidden>
+      <header class="view-head">
+        <h1 id="keys-heading" tabindex="-1">Chaves pós-quânticas.</h1>
+        <p>Gere um par ML-KEM (FIPS 203). Compartilhe só a chave pública; a privada é exportada cifrada com a sua senha. Depende de suporte nativo do navegador.</p>
+      </header>
+      <div class="columns">
+        <div class="panel">
+          <div class="block-head"><h2>Gerar par de chaves</h2><span id="pq-chip" class="tag" data-state="idle">VERIFICANDO SUPORTE</span></div>
+          <div class="notice notice-caution static"><svg class="ico"><use href="#i-info"/></svg><span>Sem ML-KEM nativo no WebCrypto, estes controles ficam indisponíveis. AES-256 e as outras cifras simétricas continuam funcionando.</span></div>
+          <div class="field"><label for="key-alg">Algoritmo</label><select class="input select" id="key-alg"><option value="ML-KEM-768">ML-KEM-768 · FIPS 203</option><option value="ML-KEM-1024">ML-KEM-1024 · FIPS 203</option><option value="MLKEM768-X25519">MLKEM768-X25519 · híbrido</option></select><p class="hint" id="key-alg-status">Verificando compatibilidade do navegador…</p></div>
+          <div class="field"><label for="key-pass">Senha da chave privada</label><div class="password"><input class="input" type="password" id="key-pass" autocomplete="new-password" placeholder="Uma frase-senha forte"><button type="button" class="icon-btn toggle-password" data-target="key-pass" aria-label="Mostrar senha" aria-pressed="false"><svg class="ico ico-show"><use href="#i-eye"/></svg><svg class="ico ico-hide"><use href="#i-eye-off"/></svg></button></div></div>
+          <div class="field"><label for="key-pass-confirm">Repita a senha</label><div class="password"><input class="input" type="password" id="key-pass-confirm" autocomplete="new-password" placeholder="Digite novamente"><button type="button" class="icon-btn toggle-password" data-target="key-pass-confirm" aria-label="Mostrar confirmação de senha" aria-pressed="false"><svg class="ico ico-show"><use href="#i-eye"/></svg><svg class="ico ico-hide"><use href="#i-eye-off"/></svg></button></div></div>
+          <div class="btn-row"><button type="button" class="btn btn-primary btn-lg" id="keygen-btn"><svg class="ico"><use href="#i-key"/></svg><span class="btn-label">Gerar par de chaves</span></button></div>
+          <div id="key-alert" class="notice hidden" role="alert"></div>
+        </div>
+
+        <div class="panel">
+          <div class="block-head"><h2>Teste neste navegador</h2><button type="button" class="btn btn-sm" id="pq-browser-button"><span class="btn-label">Executar teste completo</span></button></div>
+          <p class="lede">Roda ML-KEM de verdade com a API deste navegador: geração, exportação e importação, encapsulamento, cifragem, recuperação e rejeição de adulteração. Nada sai do dispositivo.</p>
+          <div id="pq-browser-results" class="pq-list" role="status" aria-live="polite" aria-atomic="false"><div class="pq-line">Disponibilidade detectada não equivale a teste aprovado. Execute o teste para verificar.</div></div>
+          <p id="pq-browser-status" class="hint">O resultado vale só para este navegador e versão. Safari/iOS e outros motores podem não ter ML-KEM nativo.</p>
+        </div>
+      </div>
+      <div id="key-output" class="panel hidden">
+        <div class="columns columns-flush">
+          <div class="field"><label for="key-public-output">Chave pública · pode compartilhar</label><textarea id="key-public-output" class="input code" rows="5" spellcheck="false" readonly></textarea><div class="btn-row"><button type="button" class="btn btn-primary" id="key-pub-copy"><svg class="ico"><use href="#i-copy"/></svg><span class="btn-label">Copiar pública</span></button><button type="button" class="btn" id="key-pub-save"><svg class="ico"><use href="#i-download"/></svg><span class="btn-label">Salvar .txt</span></button></div></div>
+          <div class="field"><label for="key-private-output">Chave privada cifrada · confidencial</label><textarea id="key-private-output" class="input code" rows="5" spellcheck="false" readonly></textarea><div class="btn-row"><button type="button" class="btn btn-primary" id="key-priv-save"><svg class="ico"><use href="#i-download"/></svg><span class="btn-label">Salvar .txt</span></button><button type="button" class="btn" id="key-priv-copy"><svg class="ico"><use href="#i-copy"/></svg><span class="btn-label">Copiar privada protegida</span></button></div></div>
+        </div>
+        <p class="fineprint">A chave privada está cifrada, mas depende da sua senha. Faça um backup seguro: sem a senha ou sem a chave privada, envelopes PQ não abrem.</p>
+      </div>
+    </section>
+
+    <!-- ───────────── Verificar: formato e hash ───────────── -->
+    <section class="view" id="view-tools" aria-labelledby="tools-heading" hidden>
+      <header class="view-head">
+        <h1 id="tools-heading" tabindex="-1">Verifique antes de confiar.</h1>
+        <p>Identifique formatos conhecidos e calcule a impressão digital de mensagens e arquivos, sem rede. Um hash não cifra nada e não prova autoria.</p>
+      </header>
+      <div class="columns">
+        <div class="panel">
+          <h2>Identificar formato</h2>
+          <div class="field"><label for="format-input">Conteúdo ou cabeçalho</label><textarea id="format-input" class="input code" rows="6" spellcheck="false" autocapitalize="off" placeholder="VEIL1. / -----BEGIN PGP MESSAGE----- / age-encryption.org/v1 / U2FsdGVkX1…"></textarea><p class="hint">Reconhece VEIL, OpenPGP ASCII Armor, age, OpenSSL Salted, JWE, Fernet e estruturas PEM. Só o formato VEIL é aberto aqui.</p></div>
+          <div class="btn-row"><button type="button" class="btn btn-primary" id="format-detect"><span class="btn-label">Identificar formato</span></button><button type="button" class="btn btn-ghost" id="format-clear"><span class="btn-label">Limpar</span></button></div>
+          <div class="notice notice-info hidden" id="format-result" aria-live="polite"></div>
+        </div>
+        <div class="panel">
+          <div class="field-top"><h2 id="hash-kind-label">Calcular hash</h2>
+            <div class="segmented segmented-sm" role="tablist" aria-labelledby="hash-kind-label"><span class="seg-thumb" aria-hidden="true"></span><button type="button" class="seg" role="tab" id="hash-tab-text" aria-selected="true">Mensagem</button><button type="button" class="seg" role="tab" id="hash-tab-file" aria-selected="false">Arquivo</button></div>
+          </div>
+          <div class="field" id="hash-text-wrap"><label for="hash-text">Mensagem</label><textarea class="input prose" rows="4" id="hash-text" placeholder="Texto para calcular o hash" spellcheck="false"></textarea></div>
+          <div class="field hidden" id="hash-file-wrap"><label for="hash-file">Arquivo local</label><input class="input file-input" type="file" id="hash-file"><p class="hint">Até 24 MiB. O arquivo é processado no dispositivo.</p></div>
+          <div class="field-pair"><div class="field"><label for="hash-alg">Algoritmo</label><select class="input select" id="hash-alg"><option value="SHA-256">SHA-256</option><option value="SHA-384">SHA-384</option><option value="SHA-512">SHA-512</option></select></div><div class="field"><label for="hash-expected">Hash esperado (opcional)</label><input class="input code" id="hash-expected" placeholder="Hexadecimal para comparar" autocapitalize="off" spellcheck="false"></div></div>
+          <div class="btn-row"><button type="button" class="btn btn-primary" id="hash-run"><span class="btn-label">Calcular hash</span></button><button type="button" class="btn btn-ghost" id="hash-clear"><span class="btn-label">Limpar</span></button></div>
+          <div class="result hidden" id="hash-output"><div class="result-head"><strong>Impressão digital</strong><span class="tag" data-state="ready" id="hash-output-alg">SHA-256</span></div><pre class="result-text code" id="hash-value" tabindex="0"></pre><div class="btn-grid"><button type="button" class="btn" id="hash-copy"><svg class="ico"><use href="#i-copy"/></svg><span class="btn-label">Copiar hash</span></button></div></div>
+          <div class="notice hidden" id="hash-result" aria-live="polite"></div>
+          <p class="hint">Hashes comparam bytes. Confirme também a origem do hash de referência.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ───────────── Guia ───────────── -->
+    <section class="view" id="view-guide" aria-labelledby="guide-heading" hidden>
+      <header class="view-head">
+        <h1 id="guide-heading" tabindex="-1">O que o VEIL protege, e o que não.</h1>
+        <p>O formato, as escolhas criptográficas e os limites estão descritos aqui. Uma boa interface não substitui um protocolo auditado.</p>
+      </header>
+      <div class="panel">
+        <dl class="reference">
+          <div><dt>Conversa P2P</dt><dd>Um convite <code>VEILP2P2</code> carrega a sala, uma chave AES-256 e o endereço do broker. O broker WSS só transporta a negociação WebRTC cifrada; mensagens e arquivos seguem pelo canal WebRTC (direto ou por relay TURN), cifrados novamente com AES-256-GCM. O broker é desconectado quando o canal é autenticado. Arquivos: até 5 MiB, com verificação SHA-256.</dd></div>
+          <div><dt>Algoritmos do envelope</dt><dd>AES-128/192/256-GCM, AES-256-CBC + HMAC-SHA256, AES-256-CTR + HMAC-SHA256 e ChaCha20-Poly1305 / AES-128/256-OCB quando disponíveis. Modo híbrido ML-KEM-768, ML-KEM-1024 ou MLKEM768-X25519 + AES-256-GCM onde o WebCrypto suportar.</dd></div>
+          <div><dt>Senha e derivação</dt><dd>PBKDF2-SHA256 ou PBKDF2-SHA512 com salt aleatório de 16 bytes e 310 mil a 900 mil iterações. HKDF-SHA256 separa as chaves usadas por cada algoritmo.</dd></div>
+          <div><dt>Integridade</dt><dd>Algoritmos AEAD verificam a tag de autenticação; CBC/CTR usam HMAC-SHA256 na ordem Encrypt-then-MAC. O cabeçalho faz parte dos dados autenticados. Alterações ou senha errada causam erro.</dd></div>
+          <div><dt>Hash</dt><dd>A seção Verificar calcula SHA-256, SHA-384 e SHA-512. Hash não cifra, não substitui MAC ou assinatura e só permite comparação segura quando a referência tem origem confiável.</dd></div>
+          <div><dt>Detecção de formato</dt><dd>O prefixo <code>VEIL1.</code> identifica o formato v1 e seu cabeçalho informa a cifra. O inspetor também aponta indícios de OpenPGP, age, OpenSSL, JWE, Fernet e outras representações, sem prometer abri-las nem descobrir a cifra de bytes arbitrários.</dd></div>
+          <div><dt>Pós-quântico</dt><dd>ML-KEM é encapsulamento de chaves, não uma cifra simétrica. O modo PQ exige uma senha e a chave privada do destinatário. AES-256 também mantém ampla margem contra os ataques quânticos genéricos conhecidos.</dd></div>
+          <div><dt>Leitura única</dt><dd>O cofre local usa IndexedDB e apaga o registro antes de mostrar o conteúdo. No chat P2P, o remetente libera o conteúdo somente na primeira solicitação, enquanto estiver online. A exclusão não impede backups, cópias anteriores, gravações da tela ou retenção pelo destinatário.</dd></div>
+          <div><dt>Privacidade e limites</dt><dd>Fora da Conversa, nenhuma chamada de rede é feita. A Conversa usa um broker externo WSS apenas para a negociação cifrada. Sem cookies, analytics ou telemetria; a única preferência gravada é o tema. Os dados ficam em memória durante a operação e podem permanecer na memória do navegador até serem liberados. Evite extensões e dispositivos não confiáveis. O envelope exibe algoritmo, tipo, salt, nonce e parâmetros KDF; o nome do arquivo é cifrado. Limite de arquivo do envelope: 24 MiB.</dd></div>
+          <div><dt>Compatibilidade</dt><dd>O HTML funciona sem rede em navegadores com WebCrypto em contexto seguro. Em alguns iPhones, abrir o HTML direto pelo app Arquivos não executa JavaScript; abra em um navegador compatível ou sirva a página via HTTPS.</dd></div>
+          <div><dt>Aviso</dt><dd>Implementação própria de envelope e de protocolo, sem auditoria criptográfica independente. Não garante anonimato, invisibilidade ao provedor nem apagamento forense. Não use como única proteção para segredos críticos.</dd></div>
+        </dl>
+      </div>
+      <div class="panel">
+        <h2>Compatibilidade neste navegador</h2>
+        <div id="capability" class="caps">Executando verificações locais…</div>
+        <div class="btn-row"><button type="button" class="btn" id="selftest-btn"><span class="btn-label">Executar teste criptográfico local</span></button></div>
+        <div id="selftest-status" class="notice notice-info hidden" role="status"></div>
+      </div>
+    </section>
+
+    <footer class="colophon"><span>VEIL 2.2 · P2P Privacy & QR</span><span>Sem hospedagem VEIL, sem contas, sem rastreamento.</span></footer>
+  </main>
+</div>
+
+<div class="toasts" id="toasts" aria-hidden="true"></div>
+<div role="status" aria-live="polite" class="sr" id="toast"></div>
+
+<script>
+/*@ui*/
+</script>
+<script>
+/*@core*/
+</script>
+<script>
+/*@qr*/
+</script>
+<script>
+/*@p2p*/
+</script>
+</body>
+</html>

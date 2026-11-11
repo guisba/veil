@@ -17,3 +17,12 @@ Não publique chaves, convites ou detalhes de explorações envolvendo usuários
 ## Estado de verificação
 
 Testes automatizados Node disponíveis em `tests/`. São testes de regressão, não prova de segurança criptográfica; em especial, o estabelecimento de pares na suíte é simulado.
+
+`tests/e2e/` traz um teste opcional em Chromium real (dois contextos isolados, WebRTC real, broker WSS local). Ele verifica o fluxo de ponta a ponta e que nada legível passa pelo broker, mas roda em uma única máquina: não cobre redes distintas, STUN/TURN, brokers públicos nem dispositivos físicos.
+
+## Interface e superfície de ataque
+
+- A reformulação da interface não alterou o formato do envelope, a derivação de chaves, o protocolo P2P, a sinalização nem a leitura única.
+- A CSP continua sem `default-src`, sem scripts ou estilos remotos; foi acrescentado apenas `font-src data:` para a fonte embutida no próprio arquivo.
+- O convite aparece desfocado até você pedir para vê-lo, e o QR só é desenhado enquanto o painel está aberto; ao ocultar, o canvas é limpo. Isso reduz exposição acidental na tela, não é uma proteção criptográfica.
+- A única preferência gravada pelo aplicativo é o tema (`localStorage`). O título da aba pode mostrar a contagem de mensagens não lidas, nunca o conteúdo.

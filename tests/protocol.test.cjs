@@ -6,7 +6,7 @@ const path = require('node:path');
 const assert = require('node:assert/strict');
 const { webcrypto } = require('node:crypto');
 const { TextEncoder, TextDecoder } = require('node:util');
-const source = fs.readFileSync(path.join(__dirname, '..', 'p2p.js'), 'utf8');
+const source = fs.readFileSync(path.join(__dirname, '..', 'src', 'p2p.js'), 'utf8');
 const delay = (ms) => new Promise((r) => setTimeout(r, ms));
 
 class MockElement {
@@ -74,7 +74,7 @@ function spawn() {
     atob: (s) => Buffer.from(s, 'base64').toString('binary'), btoa: (s) => Buffer.from(s, 'binary').toString('base64'),
     navigator: {}, URL: Object.assign(URL, {createObjectURL: ()=>'blob:test',revokeObjectURL: () => {}}), Blob, console };
   vm.createContext(context);
-  vm.runInContext(fs.readFileSync(path.join(__dirname, '..', 'qr_vendor.js'),'utf8'), context, { filename: 'qr_vendor.js' });
+  vm.runInContext(fs.readFileSync(path.join(__dirname, '..', 'src', 'qr_vendor.js'),'utf8'), context, { filename: 'qr_vendor.js' });
   vm.runInContext(source, context, { filename: 'p2p.js' });
   get('p2p-broker-url').value='wss://broker.emqx.io:8084/mqtt';
   return { get, window, elements, context };
